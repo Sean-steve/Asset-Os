@@ -1,0 +1,23 @@
+name: Frontend CI
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [phase-0/ui-foundation-pages]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+      - name: Foundation tests
+        run: npm run test
+      - name: Typecheck and build
+        run: npm run build
