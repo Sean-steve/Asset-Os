@@ -1,5 +1,5 @@
 /** Illustrative records only. No real user information, ledger or connections. */
-export type Asset = { id: string; name: string; category: string; subtype: string; value: number; equity: number; status: 'Active' | 'Review'; icon: string; color: string }
+export type Asset = { id: string; name: string; category: string; subtype: string; value: number; equity: number; status: string; icon: string; color: string; currency?: string }
 export const assets: Asset[] = [
   { id:'AST-001', name:'Riverside Apartments', category:'Real Estate', subtype:'Rental property', value:12200000, equity:8300000, status:'Active',icon:'building',color:'#428fff' },
   { id:'AST-002', name:'Toyota Hilux 2022', category:'Vehicles', subtype:'Commercial vehicle', value:3450000, equity:2650000, status:'Active',icon:'car',color:'#4ed3b0' },
