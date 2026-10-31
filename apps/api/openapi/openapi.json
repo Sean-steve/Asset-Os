@@ -2,9 +2,9 @@
   "openapi": "3.1.0",
   "info": {
     "title": "Asset OS — Backend API Contracts",
-    "version": "0.3.0-b2",
-    "summary": "B2 verified OIDC-backed Asset Registry, lifecycle, acquisition, ownership and disposition",
-    "description": "B2 implements guarded PostgreSQL lifecycle/acquisition/ownership/disposition commands and read-only history. All writes require verified tenant member, strong If-Match ETag and Idempotency-Key. Assets remain user-entered facts; no Finance OS ledger posting or legal ownership verification is implied. Production issuer and API host require operator configuration."
+    "version": "0.4.0-b3",
+    "summary": "B3 protected PostgreSQL asset valuations, financing snapshots and user-recorded economics",
+    "description": "Trusted OIDC, tenant membership and FORCE RLS underlie asset registry, lifecycle and economics. B3 valuation acceptance is internal review only, balances are user-recorded, finance references are not reconciled, and no Finance OS posting, actual payment or loan servicing is performed. Live issuer/API deployment is pending."
   },
   "servers": [
     {
@@ -1298,13 +1298,13 @@
     "/v1/assets/{assetId}/valuations": {
       "post": {
         "tags": [
-          "Valuation"
+          "Valuations"
         ],
-        "summary": "Record evidence-linked valuation draft",
-        "operationId": "POST_valuation_record_evidence_linked_valuation_draft",
+        "summary": "Create an immutable draft user-entered valuation",
+        "operationId": "post__v1_assets__assetId__valuations",
+        "x-runtime-status": "IMPLEMENTED_B3",
         "x-implementation-phase": "B3",
-        "x-runtime-status": "NOT_IMPLEMENTED_IN_B0",
-        "x-domain-authority": "ASSET_OS",
+        "x-money-authority": "USER_ENTERED_OBSERVATIONS_ONLY",
         "security": [
           {
             "KernelBearer": []
@@ -1321,6 +1321,26 @@
             }
           },
           {
+            "name": "X-Tenant-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Tenant selector only, never authorization."
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^\"[1-9][0-9]{0,8}\"$"
+            },
+            "description": "Current asset record-version ETag. Stale: 412"
+          },
+          {
             "name": "Idempotency-Key",
             "in": "header",
             "required": true,
@@ -1328,33 +1348,280 @@
               "type": "string",
               "minLength": 8,
               "maxLength": 128
-            },
-            "description": "Stable per-tenant key; server enforces request hash and exactly-once command semantics when implemented."
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ValuationRequest"
-              }
             }
           }
-        },
+        ],
         "responses": {
           "201": {
-            "description": "Accepted contract response",
+            "description": "Tenant-scoped atomic domain command and current asset",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Asset"
+                  "$ref": "#/components/schemas/B3CommandResult"
+                }
+              }
+            },
+            "headers": {
+              "ETag": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Idempotent-Replayed": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Structured domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Structured domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Structured domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Structured domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Structured domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "412": {
+            "description": "Structured domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Structured domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "428": {
+            "description": "Structured domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
                 }
               }
             }
           },
           "503": {
-            "description": "Domain access intentionally blocked in B0 until verified Kernel identity",
+            "description": "Structured domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/B3ValuationCreate"
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "Valuations"
+        ],
+        "summary": "Valuation history including draft/accepted/superseded",
+        "operationId": "get__v1_assets__assetId__valuations",
+        "x-runtime-status": "IMPLEMENTED_B3",
+        "x-implementation-phase": "B3",
+        "x-money-authority": "USER_ENTERED_OBSERVATIONS_ONLY",
+        "security": [
+          {
+            "KernelBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "assetId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "X-Tenant-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Tenant selector only, never authorization."
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 30
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "maxLength": 512
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Tenant-scoped read-only view; external authorities not claimed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/B3HistoryPage"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Structured domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Structured domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Structured domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Structured domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Structured domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "412": {
+            "description": "Structured domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Structured domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "428": {
+            "description": "Structured domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Structured domain error",
             "content": {
               "application/json": {
                 "schema": {
@@ -3086,6 +3353,1671 @@
           }
         }
       }
+    },
+    "/v1/assets/{assetId}/economics": {
+      "get": {
+        "tags": [
+          "Economics"
+        ],
+        "summary": "Derived asset-level economics without ledger authority",
+        "operationId": "get__v1_assets__assetId__economics",
+        "x-runtime-status": "IMPLEMENTED_B3",
+        "x-implementation-phase": "B3",
+        "x-money-authority": "USER_ENTERED_OBSERVATIONS_ONLY",
+        "security": [
+          {
+            "KernelBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "assetId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "X-Tenant-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Tenant selector only, never authorization."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Tenant-scoped read-only view; external authorities not claimed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/B3EconomicsSummary"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Structured domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Structured domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Structured domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Structured domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Structured domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "412": {
+            "description": "Structured domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Structured domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "428": {
+            "description": "Structured domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Structured domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/assets/{assetId}/valuations/{valuationId}/accept": {
+      "post": {
+        "tags": [
+          "Valuations"
+        ],
+        "summary": "Accept draft and supersede existing accepted valuation",
+        "operationId": "post__v1_assets__assetId__valuations__valuationId__accept",
+        "x-runtime-status": "IMPLEMENTED_B3",
+        "x-implementation-phase": "B3",
+        "x-money-authority": "USER_ENTERED_OBSERVATIONS_ONLY",
+        "security": [
+          {
+            "KernelBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "assetId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "X-Tenant-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Tenant selector only, never authorization."
+          },
+          {
+            "name": "valuationId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^\"[1-9][0-9]{0,8}\"$"
+            },
+            "description": "Current asset record-version ETag. Stale: 412"
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 8,
+              "maxLength": 128
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Tenant-scoped atomic domain command and current asset",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/B3CommandResult"
+                }
+              }
+            },
+            "headers": {
+              "ETag": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Idempotent-Replayed": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Structured domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Structured domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Structured domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Structured domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Structured domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "412": {
+            "description": "Structured domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Structured domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "428": {
+            "description": "Structured domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Structured domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/B3ValuationAccept"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/assets/{assetId}/financing": {
+      "get": {
+        "tags": [
+          "Financing"
+        ],
+        "summary": "Financing facilities including latest recorded balances",
+        "operationId": "get__v1_assets__assetId__financing",
+        "x-runtime-status": "IMPLEMENTED_B3",
+        "x-implementation-phase": "B3",
+        "x-money-authority": "USER_ENTERED_OBSERVATIONS_ONLY",
+        "security": [
+          {
+            "KernelBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "assetId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "X-Tenant-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Tenant selector only, never authorization."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Tenant-scoped read-only view; external authorities not claimed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Structured domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Structured domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Structured domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Structured domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Structured domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "412": {
+            "description": "Structured domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Structured domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "428": {
+            "description": "Structured domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Structured domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Financing"
+        ],
+        "summary": "Record an unverified financing facility",
+        "operationId": "post__v1_assets__assetId__financing",
+        "x-runtime-status": "IMPLEMENTED_B3",
+        "x-implementation-phase": "B3",
+        "x-money-authority": "USER_ENTERED_OBSERVATIONS_ONLY",
+        "security": [
+          {
+            "KernelBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "assetId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "X-Tenant-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Tenant selector only, never authorization."
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^\"[1-9][0-9]{0,8}\"$"
+            },
+            "description": "Current asset record-version ETag. Stale: 412"
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 8,
+              "maxLength": 128
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Tenant-scoped atomic domain command and current asset",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/B3CommandResult"
+                }
+              }
+            },
+            "headers": {
+              "ETag": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Idempotent-Replayed": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Structured domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Structured domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Structured domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Structured domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Structured domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "412": {
+            "description": "Structured domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Structured domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "428": {
+            "description": "Structured domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Structured domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/B3FacilityCreate"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/assets/{assetId}/financing/{facilityId}/balances": {
+      "get": {
+        "tags": [
+          "Financing"
+        ],
+        "summary": "Paginate dated balance observations",
+        "operationId": "get__v1_assets__assetId__financing__facilityId__balances",
+        "x-runtime-status": "IMPLEMENTED_B3",
+        "x-implementation-phase": "B3",
+        "x-money-authority": "USER_ENTERED_OBSERVATIONS_ONLY",
+        "security": [
+          {
+            "KernelBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "assetId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "X-Tenant-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Tenant selector only, never authorization."
+          },
+          {
+            "name": "facilityId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 30
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "maxLength": 512
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Tenant-scoped read-only view; external authorities not claimed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/B3HistoryPage"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Structured domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Structured domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Structured domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Structured domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Structured domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "412": {
+            "description": "Structured domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Structured domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "428": {
+            "description": "Structured domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Structured domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Financing"
+        ],
+        "summary": "Record unverified outstanding balance observation",
+        "operationId": "post__v1_assets__assetId__financing__facilityId__balances",
+        "x-runtime-status": "IMPLEMENTED_B3",
+        "x-implementation-phase": "B3",
+        "x-money-authority": "USER_ENTERED_OBSERVATIONS_ONLY",
+        "security": [
+          {
+            "KernelBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "assetId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "X-Tenant-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Tenant selector only, never authorization."
+          },
+          {
+            "name": "facilityId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^\"[1-9][0-9]{0,8}\"$"
+            },
+            "description": "Current asset record-version ETag. Stale: 412"
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 8,
+              "maxLength": 128
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Tenant-scoped atomic domain command and current asset",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/B3CommandResult"
+                }
+              }
+            },
+            "headers": {
+              "ETag": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Idempotent-Replayed": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Structured domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Structured domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Structured domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Structured domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Structured domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "412": {
+            "description": "Structured domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Structured domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "428": {
+            "description": "Structured domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Structured domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/B3BalanceObserve"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/assets/{assetId}/cash-flows": {
+      "get": {
+        "tags": [
+          "Economics"
+        ],
+        "summary": "Paginate user-entered cashflow observations",
+        "operationId": "get__v1_assets__assetId__cash_flows",
+        "x-runtime-status": "IMPLEMENTED_B3",
+        "x-implementation-phase": "B3",
+        "x-money-authority": "USER_ENTERED_OBSERVATIONS_ONLY",
+        "security": [
+          {
+            "KernelBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "assetId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "X-Tenant-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Tenant selector only, never authorization."
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 30
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "maxLength": 512
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Tenant-scoped read-only view; external authorities not claimed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/B3HistoryPage"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Structured domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Structured domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Structured domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Structured domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Structured domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "412": {
+            "description": "Structured domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Structured domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "428": {
+            "description": "Structured domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Structured domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Economics"
+        ],
+        "summary": "Record manual asset income, expense or financing observation",
+        "operationId": "post__v1_assets__assetId__cash_flows",
+        "x-runtime-status": "IMPLEMENTED_B3",
+        "x-implementation-phase": "B3",
+        "x-money-authority": "USER_ENTERED_OBSERVATIONS_ONLY",
+        "security": [
+          {
+            "KernelBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "assetId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "X-Tenant-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Tenant selector only, never authorization."
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^\"[1-9][0-9]{0,8}\"$"
+            },
+            "description": "Current asset record-version ETag. Stale: 412"
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 8,
+              "maxLength": 128
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Tenant-scoped atomic domain command and current asset",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/B3CommandResult"
+                }
+              }
+            },
+            "headers": {
+              "ETag": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Idempotent-Replayed": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Structured domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Structured domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Structured domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Structured domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Structured domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "412": {
+            "description": "Structured domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Structured domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "428": {
+            "description": "Structured domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Structured domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/B3FlowObserve"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/assets/{assetId}/reconciliation-references": {
+      "get": {
+        "tags": [
+          "Economics"
+        ],
+        "summary": "Unverified reference labels, not bank reconciliation",
+        "operationId": "get__v1_assets__assetId__reconciliation_references",
+        "x-runtime-status": "IMPLEMENTED_B3",
+        "x-implementation-phase": "B3",
+        "x-money-authority": "USER_ENTERED_OBSERVATIONS_ONLY",
+        "security": [
+          {
+            "KernelBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "assetId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "X-Tenant-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Tenant selector only, never authorization."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Tenant-scoped read-only view; external authorities not claimed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Structured domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Structured domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Structured domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Structured domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Structured domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "412": {
+            "description": "Structured domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Structured domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "428": {
+            "description": "Structured domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Structured domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Economics"
+        ],
+        "summary": "Record unverified external reference label for a user flow",
+        "operationId": "post__v1_assets__assetId__reconciliation_references",
+        "x-runtime-status": "IMPLEMENTED_B3",
+        "x-implementation-phase": "B3",
+        "x-money-authority": "USER_ENTERED_OBSERVATIONS_ONLY",
+        "security": [
+          {
+            "KernelBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "assetId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "X-Tenant-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Tenant selector only, never authorization."
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^\"[1-9][0-9]{0,8}\"$"
+            },
+            "description": "Current asset record-version ETag. Stale: 412"
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 8,
+              "maxLength": 128
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Tenant-scoped atomic domain command and current asset",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/B3CommandResult"
+                }
+              }
+            },
+            "headers": {
+              "ETag": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Idempotent-Replayed": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Structured domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Structured domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Structured domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Structured domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Structured domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "412": {
+            "description": "Structured domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Structured domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "428": {
+            "description": "Structured domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Structured domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/B3ReferenceCreate"
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -4367,6 +6299,382 @@
             "maximum": 100
           }
         }
+      },
+      "B3ValuationCreate": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "effectiveOn": {
+            "type": "string",
+            "format": "date"
+          },
+          "amount": {
+            "$ref": "#/components/schemas/MoneyString"
+          },
+          "method": {
+            "type": "string",
+            "enum": [
+              "MARKET_COMPARABLES",
+              "INCOME_APPROACH",
+              "COST_APPROACH",
+              "BROKER_STATEMENT",
+              "APPRAISAL",
+              "MANUAL_ESTIMATE"
+            ]
+          },
+          "confidence": {
+            "type": "string",
+            "enum": [
+              "LOW",
+              "MEDIUM",
+              "HIGH"
+            ]
+          },
+          "sourceLabel": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160
+          },
+          "notes": {
+            "type": "string",
+            "maxLength": 800
+          }
+        },
+        "required": [
+          "effectiveOn",
+          "amount",
+          "method",
+          "confidence",
+          "sourceLabel"
+        ]
+      },
+      "B3ValuationAccept": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "note": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 400
+          },
+          "confirm": {
+            "type": "string",
+            "const": "ACCEPT_VALUATION"
+          }
+        },
+        "required": [
+          "note",
+          "confirm"
+        ]
+      },
+      "B3FacilityCreate": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "financierLabel": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160
+          },
+          "originalPrincipal": {
+            "$ref": "#/components/schemas/MoneyString"
+          },
+          "interestRatePct": {
+            "type": "string",
+            "pattern": "^(?:0|[1-9][0-9]{0,3})(?:\\.[0-9]{1,4})?$"
+          },
+          "startedOn": {
+            "type": "string",
+            "format": "date"
+          },
+          "maturesOn": {
+            "oneOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "frequency": {
+            "type": "string",
+            "enum": [
+              "MONTHLY",
+              "QUARTERLY",
+              "ANNUALLY",
+              "OTHER"
+            ]
+          },
+          "reference": {
+            "type": "string",
+            "maxLength": 140
+          },
+          "notes": {
+            "type": "string",
+            "maxLength": 800
+          }
+        },
+        "required": [
+          "financierLabel",
+          "originalPrincipal",
+          "interestRatePct",
+          "startedOn",
+          "frequency"
+        ]
+      },
+      "B3BalanceObserve": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "observedOn": {
+            "type": "string",
+            "format": "date"
+          },
+          "outstanding": {
+            "$ref": "#/components/schemas/MoneyString"
+          },
+          "sourceLabel": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160
+          },
+          "notes": {
+            "type": "string",
+            "maxLength": 800
+          }
+        },
+        "required": [
+          "observedOn",
+          "outstanding",
+          "sourceLabel"
+        ]
+      },
+      "B3FlowObserve": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "INCOME",
+              "EXPENSE",
+              "CAPEX",
+              "FINANCING_INFLOW",
+              "FINANCING_OUTFLOW"
+            ]
+          },
+          "category": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 120
+          },
+          "amount": {
+            "$ref": "#/components/schemas/MoneyString"
+          },
+          "occurredOn": {
+            "type": "string",
+            "format": "date"
+          },
+          "counterpartyLabel": {
+            "type": "string",
+            "maxLength": 160
+          },
+          "notes": {
+            "type": "string",
+            "maxLength": 800
+          }
+        },
+        "required": [
+          "kind",
+          "category",
+          "amount",
+          "occurredOn"
+        ]
+      },
+      "B3ReferenceCreate": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "flowId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "system": {
+            "type": "string",
+            "enum": [
+              "FINANCE_OS",
+              "BANK",
+              "OTHER"
+            ]
+          },
+          "externalReference": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 180
+          },
+          "note": {
+            "type": "string",
+            "maxLength": 600
+          }
+        },
+        "required": [
+          "flowId",
+          "system",
+          "externalReference"
+        ]
+      },
+      "B3EconomicsSummary": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "assetId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "currency": {
+            "type": "string"
+          },
+          "lifecycle": {
+            "type": "string"
+          },
+          "recordVersion": {
+            "type": "integer"
+          },
+          "selectedValue": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/MoneyString"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "valueSource": {
+            "type": "string",
+            "enum": [
+              "ACCEPTED_INTERNAL_VALUATION",
+              "UNVERIFIED_REGISTRY_ENTRY",
+              "NONE"
+            ]
+          },
+          "acceptedValuation": {
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "originalCostBasis": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/MoneyString"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "financing": {
+            "type": "object"
+          },
+          "indicativeEquity": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "observedCashFlow": {
+            "type": "object"
+          },
+          "indicativeValueChange": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "indicativeChangePercent": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "interpretation": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "assetId",
+          "currency",
+          "lifecycle",
+          "recordVersion",
+          "selectedValue",
+          "valueSource",
+          "acceptedValuation",
+          "originalCostBasis",
+          "financing",
+          "indicativeEquity",
+          "observedCashFlow",
+          "indicativeValueChange",
+          "indicativeChangePercent",
+          "interpretation"
+        ]
+      },
+      "B3HistoryPage": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            }
+          },
+          "nextCursor": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100
+          }
+        },
+        "required": [
+          "items",
+          "nextCursor",
+          "limit"
+        ]
+      },
+      "B3CommandResult": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "asset": {
+            "$ref": "#/components/schemas/Asset"
+          },
+          "valuation": {
+            "type": "object"
+          },
+          "facility": {
+            "type": "object"
+          },
+          "balance": {
+            "type": "object"
+          },
+          "observation": {
+            "type": "object"
+          },
+          "reference": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "asset"
+        ]
       }
     }
   }

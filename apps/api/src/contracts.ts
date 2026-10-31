@@ -44,7 +44,7 @@ export const ErrorResponse=z.object({error:z.object({
  code:z.string().min(1),message:z.string().min(1),requestId:z.string().min(1)
 }).strict()}).strict()
 export const API_VERSION='1'
-export const CONTRACT_VERSION='2026-10-31.b2'
+export const CONTRACT_VERSION='2026-10-31.b3'
 export const IDENTITY_NOT_CONFIGURED='IDENTITY_NOT_CONFIGURED'
 export const FOUNDATION_ONLY_CAPABILITIES=[
  'health_liveness','health_readiness','openapi_contract','postgresql_migrations',
@@ -137,4 +137,57 @@ export const B2_CAPABILITIES=[
  'lifecycle_guarded_transitions','acquisition_cost_basis_recording',
  'ownership_dimension_assignments_and_transfers','disposition_and_archive_history',
  'versioned_idempotent_lifecycle_commands','atomic_audit_outbox_on_lifecycle_changes'
+] as const
+
+
+// B3 amounts are exact decimal strings, never float-backed server calculations.
+export const RatePercentage=z.string().regex(/^(?:0|[1-9]\d{0,3})(?:\.\d{1,4})?$/)
+ .refine(v=>Number(v)<=1000,{message:'Rate must be between 0 and 1000 percent'})
+export const ValuationCreate=z.object({
+ effectiveOn:IsoDate,amount:DecimalMoney,
+ method:z.enum(['MARKET_COMPARABLES','INCOME_APPROACH','COST_APPROACH','BROKER_STATEMENT','APPRAISAL','MANUAL_ESTIMATE']),
+ confidence:z.enum(['LOW','MEDIUM','HIGH']),
+ sourceLabel:z.string().trim().min(1).max(160),
+ notes:z.string().max(800).default('')
+}).strict()
+export const ValuationAccept=z.object({
+ note:z.string().trim().min(1).max(400),
+ confirm:z.literal('ACCEPT_VALUATION')
+}).strict()
+export const FacilityCreate=z.object({
+ financierLabel:z.string().trim().min(1).max(160),
+ originalPrincipal:DecimalMoney,
+ interestRatePct:RatePercentage,
+ startedOn:IsoDate,maturesOn:IsoDate.nullable().default(null),
+ frequency:z.enum(['MONTHLY','QUARTERLY','ANNUALLY','OTHER']),
+ reference:z.string().max(140).default(''),
+ notes:z.string().max(800).default('')
+}).strict()
+export const BalanceObserve=z.object({
+ observedOn:IsoDate,outstanding:DecimalMoney,
+ sourceLabel:z.string().trim().min(1).max(160),
+ notes:z.string().max(800).default('')
+}).strict()
+export const FlowObserve=z.object({
+ kind:z.enum(['INCOME','EXPENSE','CAPEX','FINANCING_INFLOW','FINANCING_OUTFLOW']),
+ category:z.string().trim().min(1).max(120),
+ amount:DecimalMoney,
+ occurredOn:IsoDate,
+ counterpartyLabel:z.string().max(160).default(''),
+ notes:z.string().max(800).default('')
+}).strict()
+export const ReferenceCreate=z.object({
+ flowId:Uuid,
+ system:z.enum(['FINANCE_OS','BANK','OTHER']),
+ externalReference:z.string().trim().min(1).max(180),
+ note:z.string().max(600).default('')
+}).strict()
+export const B3_CAPABILITIES=[
+ ...B2_CAPABILITIES,
+ 'valuation_draft_accept_supersede',
+ 'financing_facilities_and_dated_balance_observations',
+ 'user_entered_cash_flow_evidence',
+ 'unverified_finance_reference_labels',
+ 'derived_currency_scoped_asset_economics',
+ 'append_only_b3_audit_and_pending_outbox'
 ] as const
