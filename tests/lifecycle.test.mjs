@@ -41,7 +41,7 @@ test('old Phase 1 local snapshot migrates to Phase 2 without changing asset iden
  const raw=JSON.stringify(old)
  const storage={getItem:(key)=>{assert.equal(key,STORE_KEY);return raw}}
  const loaded=loadRegistry(storage)
- assert.equal(loaded.version,2)
+ assert.equal(loaded.version,3)
  assert.equal(loaded.records.length,5)
  assert.equal(loaded.records[0].id,s.records[0].id)
  assert.deepEqual(loaded.phase2.acquisitions,[])

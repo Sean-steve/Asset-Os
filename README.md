@@ -1,6 +1,6 @@
 # Asset OS — Personal Kernel Asset Intelligence
 
-**Status: Phase 2 — Lifecycle, Acquisition & Ownership frontend implemented.** No production assets, identity, finance records or Kernel services are connected. The five starter assets are synthetic. New edits, acquisition, ownership and disposition records are stored only in your browser. Income/expenses, trend lines and alerts remain **demo data**.
+**Status: Phase 3 — Valuation, Financing & Economics frontend implemented.** No production assets, identity, finance records or Kernel services are connected. The five starter assets are synthetic. New edits, acquisition, ownership and disposition records are stored only in your browser. Income/expenses now derive from manually entered browser records; trend lines and alerts remain **demo data**.
 
 ## Stack
 - React 19 + TypeScript
@@ -69,6 +69,39 @@ Acquisition and ownership histories are represented separately from mutable asse
 
 **Safety boundary:** No legal transfer, financing, tax basis certification, real payout, accounting posting, Kernel authority, signatures, external document storage or server audit happens here. Economic and beneficial allocations are limited to 100% per asset/dimension. Legal/control are non-percentage rights references, not additive fractions. These rules are evaluated only in untrusted, editable browser storage and must be enforced again by the future backend.
 
+## Phase 3 — valuation, financing and economics
+
+Screens **21–30** now exist as connected, responsive browser-only workflows:
+
+| ID | Screen | Hash route |
+| --- | --- | --- |
+| 21 | Valuation Center | `#/valuations` |
+| 22 | Valuation Details and Evidence | `#/valuations/:valuationId` |
+| 23 | Record or Review Valuation | `#/valuations/new` and `#/valuations/:valuationId` |
+| 24 | Valuation History and Trends | `#/valuation-history` |
+| 25 | Financing Center | `#/financing` (new facility form inside) |
+| 26 | Financing Details and Balance History | `#/financing/:facilityId` |
+| 27 | Asset Income and Expenses | `#/income-expenses` |
+| 28 | Cash Flow and Yield Analysis | `#/cash-flow` |
+| 29 | Equity, ROI and Performance | `#/economics` |
+| 30 | Finance Reconciliation | `#/reconciliation` |
+
+### Data entry and review workflow
+
+1. Create and acquire an asset with Phase 1–2 screens, or inspect existing synthetic assets.
+2. Record a valuation draft with source, method, confidence, amount and effective date. The registry value is unchanged until explicit local acceptance.
+3. Review and locally accept the draft. Previous accepted valuations are preserved as superseded historical entries; an older draft cannot overwrite a newer accepted effective date.
+4. Create financing terms, then record dated outstanding balance snapshots. Original principal is **not** treated as outstanding debt or a posted payment. Balances may exceed principal.
+5. Record positive local income, expense, capital expenditure or financing flow entries, separated by type and currency.
+6. Inspect currency-scoped cash flow by month and indicative equity / cash-on-cost results. Missing cost basis produces no ROI; missing financing balance observations produce no debt-based equity.
+7. Attach external reference identifiers to cash-flow entries. **Reference attached does not mean verified or reconciled**; verification stays at zero until a real Finance OS adapter is available.
+
+The browser snapshot is upgraded from schema v1/v2 to **v3** at load time, preserving the existing asset IDs, acquisition, ownership, lifecycle and activity records. The same browser storage key remains in use for backward-compatible migration.
+
+The dashboard now uses manually entered cash flows for KES income and expenses (all-time); it no longer displays fabricated income/expense history. The trend illustration remains explicitly labeled. There is no FX conversion or aggregation across currencies.
+
+**Security and financial authority:** The app is a static prototype using editable localStorage. It does not connect to a bank, lender, broker or Finance OS, establish property rights, compute taxes, certify ROI, post transactions, verify receipts or generate legal audit evidence. Do not enter private financial account data, passwords or real sensitive ownership records.
+
 ## GitHub Pages
 The Vite deployment base is `/Asset-Os/`. The Actions workflow is `.github/workflows/pages.yml`.
 
@@ -87,7 +120,7 @@ Asset OS owns asset-domain state. Finance OS owns the posted financial ledger, a
 | 0 — Foundation | Implemented and deployed |
 | 1 — Dashboard and registry (01–10) | **Implemented (frontend-only)** |
 | 2 — Lifecycle, acquisition and ownership (11–20) | **Implemented (frontend-only)** |
-| 3 — Valuation and economics (21–30) | Planned |
+| 3 — Valuation, financing and economics (21–30) | **Implemented (frontend-only)** |
 | 4 — Operations and protection (31–40) | Planned |
 | 5 — Portfolio and intelligence (41–50) | Planned |
 | 6 — Kernel integration and administration (51–60) | Planned |
@@ -115,3 +148,8 @@ Do not commit credentials or personal runtime data to this public repository.
 - `src/lifecycle/LifecycleExperience.tsx` — screens 11–20 and contextual workflows
 - `src/lifecycle/lifecycle.css` — responsive Phase 2 presentation
 - `tests/lifecycle.test.mjs` — migration, state machine, ownership, cost basis and disposition safety tests
+
+- `src/economics/core.ts` — append-only valuations, facilities, observed debt, cash movements, indicative economics and reference-only reconciliation
+- `src/economics/EconomicsExperience.tsx` — 10 Phase 3 screens and contextual actions
+- `src/economics/economics.css` — responsive Phase 3 visual system
+- `tests/economics.test.mjs` — Phase 3 financial-boundary, accuracy and migration checks

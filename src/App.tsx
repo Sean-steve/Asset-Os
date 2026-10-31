@@ -2,19 +2,21 @@ import { useEffect, useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
 import {
   Activity, ArrowRight, ArrowUpRight, BarChart3, Bell, BookOpen, CheckCircle2,
-  BriefcaseBusiness, Building2, CalendarDays, CarFront, Calculator, Receipt, Archive, Users,
+  BriefcaseBusiness, Building2, CalendarDays, CarFront, Calculator, Receipt, Archive, Users, Landmark, Link2,
   ChevronDown, ChevronRight, CircleHelp, Coins, Component,
   ExternalLink, FileText, Gauge, LayoutDashboard, Layers3, Menu,
   Moon, Plus, Search, Server, ShieldCheck, Sparkles,
   Sun, TrendingUp, Wallet, Wrench, X, type LucideIcon
 } from 'lucide-react'
-import { activity, alerts, allocation, demoSummary, events, type Asset } from './demo'
+import { activity, alerts, allocation, events, type Asset } from './demo'
 import { RegistryExperience } from './registry/RegistryExperience'
 import { LifecycleExperience } from './lifecycle/LifecycleExperience'
+import { EconomicsExperience } from './economics/EconomicsExperience'
+import { flowSummary, indicativeEquity } from './economics/core'
 import { loadRegistry, saveRegistry, sumInCurrency, type AssetRecord, type RegistryState } from './registry/core'
 import { phaseNames, screens } from './inventory'
 
-type Page = 'dashboard' | 'design' | 'roadmap' | 'planned' | 'registry' | 'lifecycle'
+type Page = 'dashboard' | 'design' | 'roadmap' | 'planned' | 'registry' | 'lifecycle' | 'economics'
 type Period = '1M' | '3M' | '6M' | '1Y' | '5Y'
 type Palette = 'blue' | 'green' | 'violet' | 'orange' | 'red'
 
@@ -33,7 +35,12 @@ const nav: Array<{name: string; icon: LucideIcon; slug: string; phase: number}> 
   { name:'Disposition history',icon:Archive,slug:'dispositions',phase:2 },
   { name:'Portfolios',icon:Wallet,slug:'portfolios',phase:5 },
   { name:'Valuations',icon:TrendingUp,slug:'valuations',phase:3 },
+  { name:'Valuation history',icon:CalendarDays,slug:'valuation-history',phase:3 },
+  { name:'Financing',icon:Landmark,slug:'financing',phase:3 },
   { name:'Income & Expenses',icon:Coins,slug:'income-expenses',phase:3 },
+  { name:'Cash flow',icon:BarChart3,slug:'cash-flow',phase:3 },
+  { name:'Equity & ROI',icon:TrendingUp,slug:'economics',phase:3 },
+  { name:'Reconciliation',icon:Link2,slug:'reconciliation',phase:3 },
   { name:'Maintenance',icon:Wrench,slug:'maintenance',phase:4 },
   { name:'Insurance',icon:ShieldCheck,slug:'insurance',phase:4 },
   { name:'Utilization',icon:Gauge,slug:'utilization',phase:4 },
@@ -64,7 +71,7 @@ const short = (amount: number) => amount >= 1_000_000 ? 'KES ' + (amount / 1_000
 const go = (route: string) => { window.location.hash = '/' + route }
 const currentPath = () => decodeURIComponent(window.location.hash.replace(/^#\/?/, '')) || 'dashboard'
 const getPage = (path: string): Page =>
-  path === 'dashboard' ? 'dashboard' : path === 'design' ? 'design' : path === 'roadmap' ? 'roadmap' : /^(assets(?:\/new)?|asset\/|classifications$|tags$|search$|activity$|type-views$)/.test(path) ? 'registry' : /^(acquisitions(?:\/|$)|cost-basis(?:\/|$)|lifecycle(?:\?|$)|ownership(?:\/|$)|dispose(?:\/|$)|dispositions(?:\/|$))/.test(path) ? 'lifecycle' : 'planned'
+  path === 'dashboard' ? 'dashboard' : path === 'design' ? 'design' : path === 'roadmap' ? 'roadmap' : /^(assets(?:\/new)?|asset\/|classifications$|tags$|search$|activity$|type-views$)/.test(path) ? 'registry' : /^(acquisitions(?:\/|$)|cost-basis(?:\/|$)|lifecycle(?:\?|$)|ownership(?:\/|$)|dispose(?:\/|$)|dispositions(?:\/|$))/.test(path) ? 'lifecycle' : /^(valuations(?:\/|$)|valuation-history(?:\?|$)|financing(?:\/|$)|income-expenses$|cash-flow(?:\?|$)|economics(?:\?|$)|reconciliation$)/.test(path) ? 'economics' : 'planned'
 const slug = (value: string) => value.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
 const toneFor = (tone: string) => 'tone-' + tone
 const currency = (amount:number,code:string) => new Intl.NumberFormat('en-KE',{maximumFractionDigits:2}).format(amount)+' '+code
@@ -180,17 +187,19 @@ function InsightPanels({onPlanned,onAlert}: {onPlanned:(phase:number,title:strin
 function Dashboard({items,store,onSelect,onPlanned,onAlert}: {items:Asset[];store:RegistryState;onSelect:(a:Asset)=>void;onPlanned:(phase:number,title:string)=>void;onAlert:(title:string,detail:string)=>void}) {
   const [period,setPeriod]=useState<Period>('1Y')
   const value=sumInCurrency(store.records,'value','KES')
-  const equity=sumInCurrency(store.records,'equity','KES')
+  const held=store.records.filter(a=>a.currency==='KES'&&['ACQUIRED','ACTIVE','SUSPENDED'].includes(a.lifecycle))
+  const equity=held.reduce((sum,a)=>sum+indicativeEquity(store,a.id).amount,0)
+  const flow=flowSummary(store.phase3.flows,'KES')
   return <>
     <div className="page-intro"><div><span className="eyebrow">YOUR ASSET COMMAND CENTER</span><h1>Good morning <span className="wave">✳</span></h1><p>Here’s the complete picture of your assets and their performance.</p></div><div className="page-actions"><span className="today-chip"><CalendarDays size={16}/> Overview</span><button className="primary-button" type="button" onClick={()=>go('assets/new')}><Plus size={18}/> Add asset</button></div></div>
-    <div className="notice"><span className="notice-pill">DEMO DATA</span><span>KES summary reflects browser records. Income, expenses, trend and alerts are illustrative; no financial accounts are connected.</span><button type="button" onClick={()=>onPlanned(6,'Integration Hub')}>About connections <ArrowRight size={14}/></button></div>
+    <div className="notice"><span className="notice-pill">DEMO DATA</span><span>KES value, indicative equity and all-time income/expenses reflect browser records. Trend, alerts and events remain illustrative; no financial accounts are connected.</span><button type="button" onClick={()=>onPlanned(6,'Integration Hub')}>About connections <ArrowRight size={14}/></button></div>
     <div className="dashboard-layout">
       <div className="dashboard-main">
         <div className="kpi-grid">
           <Kpi label="Held KES asset value" value={short(value)} change="Browser" icon={BarChart3} tone="violet" detail="local records"/>
-          <Kpi label="Held KES equity" value={short(equity)} change="Browser" icon={Layers3} tone="green" detail="local records"/>
-          <Kpi label="Demo monthly income" value={short(demoSummary.monthlyIncome)} change="Illustrative" icon={TrendingUp} tone="blue" detail="vs. last month"/>
-          <Kpi label="Demo monthly expenses" value={short(demoSummary.monthlyExpenses)} change="Illustrative" icon={FileText} tone="red" detail="vs. last month"/>
+          <Kpi label="Indicative KES equity" value={short(equity)} change="Unverified" icon={Layers3} tone="green" detail="local records"/>
+          <Kpi label="Recorded KES income" value={short(flow.INCOME)} change="Browser" icon={TrendingUp} tone="blue" detail="all-time entries"/>
+          <Kpi label="Recorded KES expenses" value={short(flow.EXPENSE)} change="Browser" icon={FileText} tone="red" detail="all-time entries"/>
         </div>
         <div className="chart-grid"><TrendChart period={period} changePeriod={setPeriod}/><AllocationChart items={items} onView={()=>onPlanned(5,'Asset Allocation and Concentration')}/></div>
         <div className="bottom-grid"><AssetTable items={items} onSelect={onSelect} onViewAll={()=>go('assets')}/><Performance items={items} onView={()=>onPlanned(5,'Performance Intelligence Center')}/></div>
@@ -218,9 +227,9 @@ function Roadmap({onPhase,onRoute,firstAssetId}: {onPhase:(phase:number,title:st
   const [filter,setFilter]=useState<number | 'all'>('all')
   const matches=filter==='all'?screens:screens.filter(screen=>screen.phase===filter)
   return <div className="support-page"><div className="page-intro"><div><span className="eyebrow">DELIVERY TRACKER / AOS</span><h1>Screen roadmap</h1><p>Transparent progress across the complete 60-screen Asset OS experience.</p></div></div>
-    <div className="roadmap-hero"><div><span className="eyebrow">CURRENT MILESTONE</span><h2>Phase 2 — Lifecycle, acquisition & ownership</h2><p>Twenty connected frontend screens: guided acquisition, cost basis, ownership interests and transfers, guarded lifecycle changes, disposition and preserved history. Browser-local only.</p></div><div className="roadmap-count"><strong>20<span>/60</span></strong><small>frontend screens implemented</small></div></div>
+    <div className="roadmap-hero"><div><span className="eyebrow">CURRENT MILESTONE</span><h2>Phase 3 — Valuation, financing & economics</h2><p>Thirty connected frontend screens: append-only valuations, financing and balance observations, cash flows, indicative ROI and reconciliation-reference mapping. Browser-local only.</p></div><div className="roadmap-count"><strong>30<span>/60</span></strong><small>frontend screens implemented</small></div></div>
     <div className="roadmap-filter" role="group" aria-label="Filter screens"><button type="button" className={filter==='all'?'active':''} aria-pressed={filter==='all'} onClick={()=>setFilter('all')}>All phases</button>{phaseNames.map((_,i)=><button type="button" key={i} className={filter===i+1?'active':''} aria-pressed={filter===i+1} onClick={()=>setFilter(i+1)}>Phase {i+1}</button>)}</div>
-    <div className="roadmap-list">{matches.map(screen=><button className="roadmap-item" type="button" key={screen.id} onClick={()=>screen.phase===1?onRoute((['dashboard','assets',firstAssetId?'asset/'+encodeURIComponent(firstAssetId):'assets/new','assets/new',firstAssetId?'asset/'+encodeURIComponent(firstAssetId)+'/edit':'assets/new','classifications','tags','search','activity','type-views'][screen.id-1])||'assets'):screen.phase===2?onRoute((['acquisitions','acquisitions/new',firstAssetId?'acquisitions/'+encodeURIComponent(firstAssetId):'acquisitions','cost-basis','lifecycle','ownership',firstAssetId?'ownership/'+encodeURIComponent(firstAssetId):'ownership',firstAssetId?'ownership/manage/'+encodeURIComponent(firstAssetId):'ownership/manage','dispose','dispositions'][screen.id-11])||'acquisitions'):onPhase(screen.phase,screen.title)}><span className="screen-number">{String(screen.id).padStart(2,'0')}</span><span><strong>{screen.title}</strong><small>Phase {screen.phase} · {phaseNames[screen.phase-1]}</small></span><span className={'status '+(screen.phase<=2?'status-active':'status-neutral')}>{screen.phase<=2?'Built':'Planned'}</span><ChevronRight size={16}/></button>)}</div>
+    <div className="roadmap-list">{matches.map(screen=><button className="roadmap-item" type="button" key={screen.id} onClick={()=>screen.phase===1?onRoute((['dashboard','assets',firstAssetId?'asset/'+encodeURIComponent(firstAssetId):'assets/new','assets/new',firstAssetId?'asset/'+encodeURIComponent(firstAssetId)+'/edit':'assets/new','classifications','tags','search','activity','type-views'][screen.id-1])||'assets'):screen.phase===2?onRoute((['acquisitions','acquisitions/new',firstAssetId?'acquisitions/'+encodeURIComponent(firstAssetId):'acquisitions','cost-basis','lifecycle','ownership',firstAssetId?'ownership/'+encodeURIComponent(firstAssetId):'ownership',firstAssetId?'ownership/manage/'+encodeURIComponent(firstAssetId):'ownership/manage','dispose','dispositions'][screen.id-11])||'acquisitions'):screen.phase===3?onRoute((['valuations','valuations','valuations/new','valuation-history','financing','financing','income-expenses','cash-flow','economics','reconciliation'][screen.id-21])||'valuations'):onPhase(screen.phase,screen.title)}><span className="screen-number">{String(screen.id).padStart(2,'0')}</span><span><strong>{screen.title}</strong><small>Phase {screen.phase} · {phaseNames[screen.phase-1]}</small></span><span className={'status '+(screen.phase<=3?'status-active':'status-neutral')}>{screen.phase<=3?'Built':'Planned'}</span><ChevronRight size={16}/></button>)}</div>
   </div>
 }
 
@@ -260,11 +269,11 @@ export default function App() {
     <aside className={'sidebar '+(menuOpen?'sidebar-open':'')} aria-label="Main navigation">
       <Brand />
       <div className="sidebar-scroll">
-        <div className="nav-section"><span className="nav-heading">WORKSPACE</span>{nav.map(item=><button type="button" key={item.slug} className={'nav-item '+((item.slug==='dashboard'&&page==='dashboard'||page==='planned'&&item.slug===pageSlug||page==='registry'&&item.slug===path||page==='lifecycle'&&(path===item.slug||path.startsWith(item.slug+'/')||path.startsWith(item.slug+'?')))?'current':'')} onClick={()=>{go(item.phase<=2?item.slug:'planned/'+item.slug);setMenuOpen(false)}}><item.icon size={19} strokeWidth={1.8}/><span>{item.name}</span>{item.phase>2&&<span className="nav-soon" title={'Phase '+item.phase}>P{item.phase}</span>}</button>)}</div>
+        <div className="nav-section"><span className="nav-heading">WORKSPACE</span>{nav.map(item=><button type="button" key={item.slug} className={'nav-item '+((item.slug==='dashboard'&&page==='dashboard'||page==='planned'&&item.slug===pageSlug||page==='registry'&&item.slug===path||page==='lifecycle'&&(path===item.slug||path.startsWith(item.slug+'/')||path.startsWith(item.slug+'?'))||page==='economics'&&(path===item.slug||path.startsWith(item.slug+'/')||path.startsWith(item.slug+'?')))?'current':'')} onClick={()=>{go(item.phase<=3?item.slug:'planned/'+item.slug);setMenuOpen(false)}}><item.icon size={19} strokeWidth={1.8}/><span>{item.name}</span>{item.phase>3&&<span className="nav-soon" title={'Phase '+item.phase}>P{item.phase}</span>}</button>)}</div>
         <div className="nav-section integration-section"><span className="nav-heading">INTEGRATIONS</span>{integrations.map(item=><button type="button" className="nav-item" key={item.name} onClick={()=>{go('planned/'+slug(item.name));setMenuOpen(false)}}><Layers3 size={18}/><span>{item.name}</span><span className="nav-soon">P6</span></button>)}</div>
         <div className="nav-section foundation-section"><span className="nav-heading">BUILD FOUNDATION</span><button type="button" className={'nav-item '+(page==='design'?'current':'')} onClick={()=>go('design')}><Component size={18}/><span>Design system</span></button><button type="button" className={'nav-item '+(page==='roadmap'?'current':'')} onClick={()=>go('roadmap')}><BookOpen size={18}/><span>60-screen roadmap</span></button></div>
       </div>
-      <div className="sidebar-bottom"><div className="assistant-card"><span className="assistant-icon"><Sparkles size={18}/></span><strong>Asset intelligence</strong><p>Intelligence workflows arrive in Phase 5.</p><button type="button" onClick={()=>openPlanned(5,'Asset AI Intelligence Assistant')}>Explore the roadmap <ArrowRight size={15}/></button></div><div className="sidebar-version"><span className="ready-dot"/> Phase 2 · Asset lifecycle <span>v0.3</span></div></div>
+      <div className="sidebar-bottom"><div className="assistant-card"><span className="assistant-icon"><Sparkles size={18}/></span><strong>Asset intelligence</strong><p>Intelligence workflows arrive in Phase 5.</p><button type="button" onClick={()=>openPlanned(5,'Asset AI Intelligence Assistant')}>Explore the roadmap <ArrowRight size={15}/></button></div><div className="sidebar-version"><span className="ready-dot"/> Phase 3 · Asset economics <span>v0.4</span></div></div>
     </aside>
     <div className="workspace">
       <header className="topbar"><div className="topbar-left"><button type="button" className="icon-button mobile-menu" onClick={()=>setMenuOpen(o=>!o)} aria-label="Toggle navigation"><Menu size={21}/></button><span className="breadcrumb-label">Personal Kernel</span><ChevronRight size={15} className="crumb-divider"/><strong>Asset OS</strong></div>
@@ -273,7 +282,7 @@ export default function App() {
         </div>
         <div className="topbar-actions"><span className="demo-flag">PREVIEW</span><button type="button" className="icon-button" onClick={()=>setTheme(t=>t==='dark'?'light':'dark')} aria-label={theme==='dark'?'Switch to light theme':'Switch to dark theme'}>{theme==='dark'?<Sun size={20}/>:<Moon size={20}/>}</button><div className="notification-anchor"><button type="button" className="icon-button" aria-label="Show demo notifications" aria-expanded={notificationsOpen} onClick={()=>setNotificationsOpen(p=>!p)}><Bell size={19}/><span className="notification-dot">3</span></button>{notificationsOpen&&<div className="notification-menu"><strong>Demo notifications</strong>{alerts.slice(0,3).map(alert=><button type="button" key={alert.id} onClick={()=>{setNotificationsOpen(false);openAlert(alert.title,alert.detail)}}><span>{alert.title}</span><small>{alert.detail}</small></button>)}</div>}</div><div className="account-chip"><span>AO</span><div><strong>Preview workspace</strong><small>Local demo mode</small></div><ChevronDown size={15}/></div></div>
       </header>
-      <main className="main-content">{page==='dashboard'?<Dashboard items={items} store={store} onSelect={a=>go('asset/'+encodeURIComponent(a.id))} onPlanned={openPlanned} onAlert={openAlert}/>:page==='registry'?<RegistryExperience key={path} path={path} store={store} onChange={handleChange} navigate={go} report={report}/>:page==='lifecycle'?<LifecycleExperience key={path} path={path} store={store} onChange={handleChange} navigate={go} report={report}/>:page==='design'?<DesignSystem openModal={()=>setDialog({title:'Reusable dialog',description:'This is a working, keyboard-dismissable modal using the Asset OS dialog component.'})}/>:page==='roadmap'?<Roadmap onPhase={openPlanned} onRoute={go} firstAssetId={store.records[0]?.id||null}/>:<Planned title={plannedTitle} phase={plannedPhase}/>}
+      <main className="main-content">{page==='dashboard'?<Dashboard items={items} store={store} onSelect={a=>go('asset/'+encodeURIComponent(a.id))} onPlanned={openPlanned} onAlert={openAlert}/>:page==='registry'?<RegistryExperience key={path} path={path} store={store} onChange={handleChange} navigate={go} report={report}/>:page==='lifecycle'?<LifecycleExperience key={path} path={path} store={store} onChange={handleChange} navigate={go} report={report}/>:page==='economics'?<EconomicsExperience key={path} path={path} store={store} onChange={handleChange} navigate={go} report={report}/>:page==='design'?<DesignSystem openModal={()=>setDialog({title:'Reusable dialog',description:'This is a working, keyboard-dismissable modal using the Asset OS dialog component.'})}/>:page==='roadmap'?<Roadmap onPhase={openPlanned} onRoute={go} firstAssetId={store.records[0]?.id||null}/>:<Planned title={plannedTitle} phase={plannedPhase}/>}
         <footer className="app-footer"><span>© 2026 Asset OS · Personal Kernel ecosystem · Prototype only</span><div><button type="button" onClick={()=>go('roadmap')}><BookOpen size={14}/> Screen plan</button><a href="https://github.com/Sean-steve/Asset-Os" target="_blank" rel="noreferrer"><ExternalLink size={14}/> GitHub repository</a></div></footer>
       </main>
     </div>
