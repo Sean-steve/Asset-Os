@@ -1970,8 +1970,8 @@
           }
         ],
         "responses": {
-          "201": {
-            "description": "Tenant-scoped persisted domain state; no external financial/legal certification",
+          "200": {
+            "description": "Guarded lifecycle state transition completed, with updated asset ETag",
             "content": {
               "application/json": {
                 "schema": {
@@ -2888,6 +2888,27 @@
               "format": "uuid"
             },
             "description": "Tenant selection only; effective access requires server-verified OIDC issuer/subject, ACTIVE membership and PostgreSQL RLS."
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 30
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 512
+            },
+            "description": "Opaque server-issued cursor; do not construct manually."
           }
         ],
         "responses": {
@@ -2896,7 +2917,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object"
+                  "$ref": "#/components/schemas/DomainHistoryPage"
                 }
               }
             }
@@ -2979,6 +3000,27 @@
               "format": "uuid"
             },
             "description": "Tenant selection only; effective access requires server-verified OIDC issuer/subject, ACTIVE membership and PostgreSQL RLS."
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 30
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 512
+            },
+            "description": "Opaque server-issued cursor; do not construct manually."
           }
         ],
         "responses": {
@@ -2987,7 +3029,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object"
+                  "$ref": "#/components/schemas/DomainHistoryPage"
                 }
               }
             }
@@ -4256,11 +4298,75 @@
         "properties": {
           "asset": {
             "$ref": "#/components/schemas/Asset"
+          },
+          "action": {
+            "type": "string",
+            "enum": [
+              "START_ACQUISITION",
+              "ACTIVATE",
+              "SUSPEND",
+              "REACTIVATE",
+              "ARCHIVE"
+            ]
+          },
+          "acquisition": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "interest": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "transfer": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "disposition": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "ownershipEventId": {
+            "type": "string",
+            "format": "uuid"
           }
         },
         "required": [
           "asset"
         ]
+      },
+      "DomainHistoryPage": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "items",
+          "nextCursor",
+          "limit"
+        ],
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": true
+            }
+          },
+          "nextCursor": {
+            "oneOf": [
+              {
+                "type": "string",
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100
+          }
+        }
       }
     }
   }
