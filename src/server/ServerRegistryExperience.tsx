@@ -2,6 +2,7 @@ import {useEffect,useRef,useState,type FormEvent} from 'react'
 import {ArrowLeft,ArrowRight,CheckCircle2,KeyRound,LockKeyhole,Plus,RefreshCw,ShieldAlert} from 'lucide-react'
 import {type AuthState,type ServerAsset,type PageResult,ServerError,serverRequest} from './identity'
 import './server-registry.css'
+import {ServerLifecycleExperience} from './ServerLifecycleExperience'
 
 type Props={
  path:string;auth:AuthState;signIn:()=>Promise<void>;logout:()=>void;
@@ -131,7 +132,7 @@ function RegistryData({auth,path,navigate}:{auth:AuthState;path:string;navigate:
     <dt>Description</dt><dd>{asset.description||'None'}</dd>
     <dt>Server record ID</dt><dd>{asset.id}</dd>
    </dl>
-   {canWrite(auth)&&<button className="primary-button" onClick={()=>navigate(assetRoute(asset.id)+'/edit')}>Edit asset <ArrowRight size={16}/></button>}
+   <button className="secondary-button" onClick={()=>navigate(assetRoute(asset.id)+'/lifecycle')}>Acquisition, lifecycle &amp; ownership <ArrowRight size={16}/></button> {canWrite(auth)&&<button className="primary-button" onClick={()=>navigate(assetRoute(asset.id)+'/edit')}>Edit asset <ArrowRight size={16}/></button>}
   </section>
  }
  return <section className="server-panel">
@@ -149,7 +150,7 @@ function RegistryData({auth,path,navigate}:{auth:AuthState;path:string;navigate:
    {rows.map(a=><tr key={a.id}><td><button className="link-button" onClick={()=>navigate(assetRoute(a.id))}>{a.name} <ArrowRight size={14}/></button><small>{a.assetNumber}</small></td><td>{a.category}</td><td>{val(a)}</td><td>{a.lifecycle}</td><td>v{a.recordVersion}</td></tr>)}
   </tbody></table></div>}
   {nextCursor&&!error&&<button type="button" className="secondary-button" disabled={loading} onClick={()=>void load(nextCursor)}>{loading?'Loading…':'Load next page'}</button>}
-  <p className="server-note">This listing is exclusively from the protected API. The local Dashboard, Acquisition, Finance and other Phase 1–6 modules remain browser previews until their server APIs exist.</p>
+  <p><button className="secondary-button" onClick={()=>navigate(root+'/lifecycle')}>Tenant acquisition &amp; disposition history <ArrowRight size={16}/></button></p><p className="server-note">This listing is exclusively from the protected API. The local Dashboard, Acquisition, Finance and other Phase 1–6 modules remain browser previews until their server APIs exist.</p>
  </section>
 }
 export function ServerRegistryExperience({path,auth,signIn,logout,selectMembership,navigate}:Props){
@@ -172,6 +173,9 @@ export function ServerRegistryExperience({path,auth,signIn,logout,selectMembersh
   {auth.phase==='error'&&<section className="server-panel"><p className="server-error" role="alert">{auth.error}</p><button className="secondary-button" onClick={()=>location.reload()}>Restart secure sign-in</button></section>}
   {auth.phase==='signedOut'&&<section className="server-panel server-intro"><KeyRound size={30}/><h2>Connect through your trusted identity provider</h2><p>Authorization Code + PKCE (S256). No password collection in Asset OS. The identity provider must be approved and tenant membership must already exist.</p><button className="primary-button" type="button" onClick={()=>void signIn()}>Sign in securely <ArrowRight size={16}/></button></section>}
   {auth.phase==='tokenReady'&&<section className="server-panel"><h2>Verify your tenant membership</h2><p>Sign-in succeeded. Enter the tenant UUID created by privileged owner enrollment. The backend will verify the active issuer/subject binding and role.</p><form className="server-membership" onSubmit={e=>void submitTenant(e)}><label>Tenant UUID<input aria-label="Tenant UUID" required value={tenantDraft} onChange={e=>setTenantDraft(e.target.value)} placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"/></label><button className="primary-button" disabled={verifying} type="submit">{verifying?'Verifying…':'Verify membership'}</button></form>{(auth.error||error)&&<p className="server-error" role="alert">{error||auth.error}</p>}</section>}
-  {auth.phase==='signedIn'&&<><div className="server-member"><CheckCircle2 size={17}/><strong>{auth.membership?.role.replaceAll('_',' ')}</strong><span>Issuer-verified tenant session · expires automatically</span><button onClick={()=>{logout()}}>Change tenant</button></div><RegistryData key={auth.tenantId+'|'+path} path={path} auth={auth} navigate={navigate}/></>}
+  {auth.phase==='signedIn'&&<><div className="server-member"><CheckCircle2 size={17}/><strong>{auth.membership?.role.replaceAll('_',' ')}</strong><span>Issuer-verified tenant session · expires automatically</span><button onClick={()=>{logout()}}>Change tenant</button></div>{(/^server-registry\/lifecycle(?:$|\/)/.test(path)||/^server-registry\/asset\/[0-9a-f-]{36}\/lifecycle$/i.test(path))?
+   <ServerLifecycleExperience auth={auth} path={path} navigate={navigate}/>:
+   <RegistryData key={auth.tenantId+'|'+path} path={path} auth={auth} navigate={navigate}/>}
+</>}
  </div>
 }

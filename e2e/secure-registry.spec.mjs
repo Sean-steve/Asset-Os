@@ -136,3 +136,113 @@ test('server-registry create/edit requests send token, tenant and idempotency/ve
  expect(writes[1].headers['if-match']).toBe('"1"')
  expect(writes[1].headers['idempotency-key']).toBeTruthy()
 })
+
+
+test('B2.1 secured lifecycle: acquisition, cost basis and ownership write carry version and idempotency; local preview unchanged',async({page})=>{
+ const calls=[]
+ let version=1, lifecycle='PLANNED',acquisition=null,interests=[],changes=[],disposition=null
+ const transitions=[]
+ await setup(page)
+ await page.route(api+'/**',async route=>{
+  const req=route.request(),path=new URL(req.url()).pathname,method=req.method()
+  const headers={'access-control-allow-origin':'*','access-control-expose-headers':'etag, idempotent-replayed'}
+  if(method==='OPTIONS')return route.fallback()
+  if(path==='/v1/assets/'+record.id+'/lifecycle'&&method==='GET'){
+   return route.fulfill({status:200,contentType:'application/json',headers,body:JSON.stringify({
+    asset:{...record,lifecycle,recordVersion:version},transitions,acquisition,
+    ownershipInterests:interests,ownershipChanges:changes,disposition
+   })})
+  }
+  if(path==='/v1/assets/'+record.id+'/lifecycle-actions'&&method==='POST'){
+   calls.push({method,path,headers:req.headers(),body:JSON.parse(req.postData()||'{}')})
+   const body=JSON.parse(req.postData()||'{}')
+   const prev=lifecycle
+   lifecycle=body.action==='START_ACQUISITION'?'ACQUISITION_PENDING':body.action==='ACTIVATE'?'ACTIVE':body.action==='SUSPEND'?'SUSPENDED':body.action==='REACTIVATE'?'ACTIVE':body.action==='ARCHIVE'?'ARCHIVED':lifecycle
+   transitions.push({id:'event-'+version,from:prev,to:lifecycle,reason:body.reason,occurredAt:'2026-10-31T12:00:00.000Z'})
+   version++
+   return route.fulfill({status:200,contentType:'application/json',headers,body:JSON.stringify({asset:{...record,lifecycle,recordVersion:version},action:body.action})})
+  }
+  if(path==='/v1/assets/'+record.id+'/acquisitions'&&method==='POST'){
+   calls.push({method,path,headers:req.headers(),body:JSON.parse(req.postData()||'{}')})
+   const body=JSON.parse(req.postData()||'{}')
+   acquisition={...body,id:'acq-id',currency:'KES',costBasis:'1265.00',
+     costs:body.costs}
+   transitions.push({id:'event-'+version,from:lifecycle,to:'ACQUIRED',reason:'Acquisition evidence recorded',occurredAt:'2026-10-31T12:00:00.000Z'})
+   lifecycle='ACQUIRED';version++
+   return route.fulfill({status:201,contentType:'application/json',headers,body:JSON.stringify({asset:{...record,lifecycle,recordVersion:version},acquisition})})
+  }
+  if(path==='/v1/assets/'+record.id+'/ownership-interests'&&method==='POST'){
+   calls.push({method,path,headers:req.headers(),body:JSON.parse(req.postData()||'{}')})
+   const body=JSON.parse(req.postData()||'{}')
+   interests=[...interests,{...body,id:'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+    partyRef:body.partyRef,partyLabel:body.partyLabel,dimension:body.dimension,percentage:body.percentage,
+    effectiveFrom:body.effectiveOn,effectiveTo:null,source:'ASSIGNMENT'}]
+   changes=[...changes,{id:'owner-event',kind:'ASSIGNMENT',dimension:body.dimension,fromPartyRef:null,toPartyRef:body.partyRef,percentage:body.percentage,effectiveOn:body.effectiveOn}]
+   version++
+   return route.fulfill({status:201,contentType:'application/json',headers,body:JSON.stringify({asset:{...record,lifecycle,recordVersion:version}})})
+  }
+  return route.fallback()
+ })
+ await authenticate(page)
+ await expect(page.getByText('Server certified car')).toBeVisible()
+ await page.goto('./#/server-registry/asset/'+record.id)
+ await expect(page.getByRole('button',{name:/Acquisition, lifecycle & ownership/})).toBeVisible()
+ await page.getByRole('button',{name:/Acquisition, lifecycle & ownership/}).click()
+ await expect(page.getByRole('heading',{name:'Verified Asset Operations'})).toBeVisible()
+ await expect(page.getByText('No authenticated initial acquisition has been recorded.')).toBeVisible()
+ await page.getByLabel('Lifecycle reason').fill('Purchasing vehicle')
+ await page.getByRole('button',{name:'Begin acquisition'}).click()
+ await expect(page.getByRole('heading',{name:'Complete initial acquisition'})).toBeVisible()
+ await page.getByLabel('Acquisition purchase').fill('1200.25')
+ await page.getByLabel('Acquisition taxes').fill('50.10')
+ await page.getByLabel('Acquisition fees').fill('5.01')
+ await page.getByLabel('Acquisition improvements').fill('9.64')
+ await page.getByRole('button',{name:'Record acquisition'}).click()
+ await expect(page.getByText('1265.00 KES')).toBeVisible()
+ await expect(page.getByRole('heading',{name:'Assign recorded ownership interest'})).toBeVisible()
+ await page.getByLabel('Ownership party reference').fill('party:one')
+ await page.getByLabel('Ownership party label').fill('Registered party one')
+ await page.getByLabel('Ownership percentage').fill('60.00')
+ await page.getByRole('button',{name:'Record ownership claim'}).click()
+ await expect(page.getByText('Registered party one').first()).toBeVisible()
+ expect(calls.map(v=>v.path.split('/').at(-1))).toEqual(['lifecycle-actions','acquisitions','ownership-interests'])
+ expect(calls.map(v=>v.headers['if-match'])).toEqual(['"1"','"2"','"3"'])
+ expect(calls.every(v=>v.headers['idempotency-key']?.length>=8)).toBe(true)
+ expect(calls.every(v=>v.headers.authorization?.startsWith('Bearer test-access-token-'))).toBe(true)
+ expect(calls.every(v=>v.headers['x-tenant-id']===tenant)).toBe(true)
+ expect(calls[1].body.costs.purchase).toBe('1200.25')
+ const before=await page.evaluate(()=>localStorage.getItem('asset-os:registry:v1'))
+ expect(String(before||'')).not.toContain('Registered party one')
+})
+test('B2.1 denied Viewer role hides mutating controls but permits authenticated lifecycle evidence',async({page})=>{
+ await setup(page,{membership:{...member,role:'VIEWER'}})
+ await page.route(api+'/v1/assets/'+record.id+'/lifecycle',route=>route.fulfill({
+  status:200,contentType:'application/json',headers:{'access-control-allow-origin':'*'},
+  body:JSON.stringify({asset:record,transitions:[],acquisition:null,ownershipInterests:[],ownershipChanges:[],disposition:null})
+ }))
+ await authenticate(page)
+ await expect(page.getByText('Server certified car')).toBeVisible()
+ await page.goto('./#/server-registry/asset/'+record.id)
+ await expect(page.getByRole('button',{name:/Acquisition, lifecycle & ownership/})).toBeVisible()
+ await page.getByRole('button',{name:/Acquisition, lifecycle & ownership/}).click()
+ await expect(page.getByText('Your verified role is read-only.')).toBeVisible()
+ await expect(page.getByRole('button',{name:'Begin acquisition'})).toHaveCount(0)
+ await expect(page.getByRole('button',{name:'Record acquisition'})).toHaveCount(0)
+})
+test('B2.1 lifecycle server failure never falls back to browser-local preview records',async({page})=>{
+ await setup(page)
+ await page.route(api+'/v1/assets/'+record.id+'/lifecycle',route=>route.fulfill({
+  status:503,contentType:'application/json',
+  headers:{'access-control-allow-origin':'*'},body:JSON.stringify({
+   error:{code:'DATABASE_NOT_READY',message:'Protected staging backend unavailable',requestId:'ci-id'}
+  })
+ }))
+ await authenticate(page)
+ await expect(page.getByText('Server certified car')).toBeVisible()
+ await page.goto('./#/server-registry/asset/'+record.id)
+ await expect(page.getByRole('button',{name:/Acquisition, lifecycle & ownership/})).toBeVisible()
+ await page.getByRole('button',{name:/Acquisition, lifecycle & ownership/}).click()
+ await expect(page.getByRole('alert')).toContainText('DATABASE_NOT_READY')
+ await expect(page.getByRole('heading',{name:'Complete initial acquisition'})).toHaveCount(0)
+ await expect(page.getByText('No authenticated initial acquisition has been recorded.')).toHaveCount(0)
+})
