@@ -13,8 +13,8 @@ import {withTenantTransaction} from '../dist/database.js'
 const contract=JSON.parse(readFileSync(new URL('../openapi/openapi.json',import.meta.url),'utf8'))
 const events=JSON.parse(readFileSync(new URL('../openapi/events.json',import.meta.url),'utf8'))
 const migration=(name)=>readFileSync(new URL('../migrations/'+name,import.meta.url),'utf8')
-const poolStub=(role='asset_os_app',applied=3)=>({
- query:async()=>({rows:[{role,applied}]}),
+const poolStub=(role='asset_os_app',applied=3,restricted=true)=>({
+ query:async()=>({rows:[{role,applied,restricted}]}),
  end:async()=>{}
 })
 
@@ -54,7 +54,7 @@ test('liveness is public but readiness only claims ready for verified runtime ro
  assert.equal((await good.inject('/health/ready')).statusCode,200)
  assert.equal((await good.inject('/v1/meta')).json().runtimeDomainAccess,'IDENTITY_NOT_CONFIGURED')
  await good.close()
- for(const fake of [poolStub('asset_os_owner'),poolStub('asset_os_app',2),{query:async()=>{throw Error('private-db-url')},end:async()=>{}}]){
+ for(const fake of [poolStub('asset_os_owner'),poolStub('asset_os_app',2),poolStub('asset_os_app',3,false),{query:async()=>{throw Error('private-db-url')},end:async()=>{}}]){
   const app=buildApp(fake)
   const response=await app.inject('/health/ready')
   assert.equal(response.statusCode,503)
