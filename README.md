@@ -4,7 +4,7 @@
 
 ## Phase B2.1 — Authenticated Lifecycle Frontend & Controlled Staging
 
-The Secure Registry asset details now link to a **PostgreSQL-backed lifecycle and ownership workspace**, with guarded transitions, itemized acquisitions, percentage/non-percentage ownership assignments and transfers, recorded disposition and immutable audit history. The server revalidates every command with OIDC tenant membership, record-version ETag and idempotency. Original Phase 2 screens still use illustrative browser-local state and have a clear link to Secure Registry.
+Signed-in Phase 2 navigation now opens a **PostgreSQL-backed asset selection center**, and Secure Registry asset details link to the **connected lifecycle and ownership workspace**, with guarded transitions, itemized acquisitions, percentage/non-percentage ownership assignments and transfers, recorded disposition and immutable audit history. The server revalidates every command with OIDC tenant membership, record-version ETag and idempotency. Original Phase 2 screens still use illustrative browser-local state and have a clear link to Secure Registry.
 
 A dedicated controlled CI staging suite runs the browser through a **real PostgreSQL and Fastify server**, using temporary, test-only signed OIDC/JWKS and PKCE authority. This certifies the technical end-to-end integration, **not** a real production issuer or publicly hosted staging environment. See [B2.1 architecture, certification levels and activation guide](docs/BACKEND_B2_1.md).
 

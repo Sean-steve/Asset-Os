@@ -32,7 +32,13 @@ test('B2.1 browser → test OIDC PKCE → real Fastify → PostgreSQL lifecycle/
  const match=page.url().match(/server-registry\/asset\/([0-9a-f-]{36})/i)
  expect(match).toBeTruthy()
  const id=match[1]
- await page.getByRole('button',{name:/Lifecycle, acquisition & ownership/}).click()
+ // Canonical Phase 2 navigation must use the PostgreSQL center after sign-in,
+ // never the seeded browser-local Phase 2 workspace.
+ await page.evaluate(()=>{window.location.hash='#/acquisitions'})
+ await expect(page.getByRole('heading',{name:'Authenticated Acquisitions'})).toBeVisible()
+ await expect(page.locator('tr[data-asset-id="'+id+'"]')).toContainText('B2.1 CI browser-to-Postgres vehicle')
+ await page.locator('tr[data-asset-id="'+id+'"]').getByRole('button',{name:/Open authenticated workflow/}).click()
+
  await expect(page.getByRole('heading',{name:'Lifecycle authority'})).toBeVisible()
  await expect(page.locator('.b21-workflow > .b21-summary')).toContainText('Planned')
  await page.getByLabel('Reason for transition').fill('Controlled CI acquisition review')
