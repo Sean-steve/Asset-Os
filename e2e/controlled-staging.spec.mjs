@@ -45,7 +45,7 @@ test('B2.1 browser → test OIDC PKCE → real Fastify → PostgreSQL lifecycle/
  await expect(page.locator('.b21-workflow > .b21-summary')).toContainText('Acquired')
  await expect(page.locator('.b21-workflow > .b21-summary')).toContainText('1300.25 KES')
  await page.locator('.b21-tabs').getByRole('button',{name:'Ownership',exact:true}).click()
- await page.getByLabel('Party reference').fill('ci-owner-a')
+ await page.getByLabel('Party reference',{exact:true}).fill('ci-owner-a')
  await page.getByLabel('Party display label').fill('Recorded CI Owner A')
  await page.getByLabel('Ownership percentage').fill('75.00')
  await page.getByRole('button',{name:'Record ownership claim'}).click()
