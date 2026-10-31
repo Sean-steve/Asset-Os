@@ -3,6 +3,8 @@
  * This browser prototype is NOT the Asset OS authority, financial ledger or Kernel identity service.
  * All seed records are synthetic. Browser storage is not suitable for sensitive user data.
  */
+import { emptyLifecycleData, validLifecycleData, type LifecycleData } from '../lifecycle/core.ts'
+
 export type Category = {
   name: string
   description: string
@@ -41,12 +43,13 @@ export type ActivityEntry = {
   id: string
   assetId: string
   assetName: string
-  event: 'REGISTERED' | 'UPDATED' | 'TAGGED' | 'CLASSIFIED' | 'RESET'
+  event: 'REGISTERED' | 'UPDATED' | 'TAGGED' | 'CLASSIFIED' | 'RESET' | 'ACQUISITION_STARTED' | 'ACQUIRED' | 'LIFECYCLE_CHANGED' | 'OWNERSHIP_CHANGED' | 'DISPOSED'
   details: string
   at: string
 }
 export type RegistryState = {
-  version: 1
+  version: 2
+  phase2: LifecycleData
   records: AssetRecord[]
   tags: string[]
   categories: Category[]
@@ -101,7 +104,7 @@ export const SAMPLE_ASSETS: AssetRecord[] = [
 const INITIAL_TAGS = ['Income producing','Priority','Vehicle','Long term','Operations','Review','Digital']
 function copy<T>(value: T): T { return JSON.parse(JSON.stringify(value)) as T }
 export function initialRegistry(): RegistryState {
-  return {version:1,records:copy(SAMPLE_ASSETS),categories:copy(DEFAULT_CATEGORIES),tags:[...INITIAL_TAGS],activity:[]}
+  return {version:2,phase2:emptyLifecycleData(),records:copy(SAMPLE_ASSETS),categories:copy(DEFAULT_CATEGORIES),tags:[...INITIAL_TAGS],activity:[]}
 }
 function validRecord(value: unknown): value is AssetRecord {
   if (!value || typeof value!=='object') return false
@@ -120,11 +123,16 @@ export function loadRegistry(storage?: Pick<Storage,'getItem'>): RegistryState {
     const value: unknown = JSON.parse(data)
     if (!value || typeof value !== 'object') return initialRegistry()
     const obj=value as Partial<RegistryState>
-    if (obj.version!==1||!Array.isArray(obj.records)||!obj.records.every(validRecord)||
+    const storedVersion=(obj as {version?:number}).version
+    if ((storedVersion!==1&&storedVersion!==2)||!Array.isArray(obj.records)||!obj.records.every(validRecord)||
       !Array.isArray(obj.tags)||!obj.tags.every(t=>typeof t==='string')||
       !Array.isArray(obj.categories)||!obj.categories.every(c=>c&&typeof c.name==='string'&&Array.isArray(c.subcategories))||
       !Array.isArray(obj.activity)) return initialRegistry()
-    return copy(obj as RegistryState)
+    if(storedVersion===2&&!validLifecycleData(obj.phase2))return initialRegistry()
+    const cloned=copy(obj as RegistryState)
+    // Retain the Phase 1 storage key to upgrade existing browser records in place.
+    // Never overwrite a v1 snapshot until the next successful user command.
+    return {...cloned,version:2,phase2:storedVersion===2?cloned.phase2:emptyLifecycleData()}
   } catch { return initialRegistry() }
 }
 export function saveRegistry(state:RegistryState,storage?: Pick<Storage,'setItem'>): boolean {
@@ -163,6 +171,7 @@ export function validateAsset(input:AssetInput,state:RegistryState):Record<strin
 export function createAsset(state:RegistryState,input:AssetInput,at=new Date().toISOString()):RegistryState {
   const errors=validateAsset(input,state)
   if (Object.keys(errors).length) throw new Error(Object.values(errors)[0])
+  if(input.lifecycle!=='PLANNED')throw Error('New assets must begin in PLANNED state.')
   const num=Math.max(0,...state.records.map(r=>parseInt(r.number.replace(/\D/g,''),10)||0))+1
   const id=uid()
   const record:AssetRecord={...copy(input),name:input.name.trim(),id,number:'AST-'+String(num).padStart(3,'0'),createdAt:at,updatedAt:at,origin:'local'}
@@ -175,6 +184,8 @@ export function updateAsset(state:RegistryState,id:string,input:AssetInput,at=ne
   if (!current) throw new Error('Asset was not found.')
   const errors=validateAsset(input,state)
   if (Object.keys(errors).length) throw new Error(Object.values(errors)[0])
+  if(current.lifecycle!==input.lifecycle||current.operational!==input.operational||current.risk!==input.risk)throw Error('Lifecycle, operational and risk states require dedicated domain workflows.')
+  if(state.phase2.acquisitions.some(a=>a.assetId===id)&&current.acquiredOn!==input.acquiredOn)throw Error('Acquisition date is locked after an acquisition is recorded.')
   const classification=current.category!==input.category||current.subcategory!==input.subcategory
   const retag=JSON.stringify(current.tags)!==JSON.stringify(input.tags)
   const changed=current.name!==input.name||current.description!==input.description||current.value!==input.value||
@@ -219,7 +230,7 @@ export function addSubcategory(state:RegistryState,name:string,subcategory:strin
   return {...state,categories:state.categories.map(c=>c.name===name?{...c,subcategories:[...c.subcategories,label]}:c)}
 }
 export const sumInCurrency=(records:AssetRecord[],field:'value'|'equity',currency:string):number=>
-  records.filter(r=>r.currency===currency&&r.lifecycle!=='DISPOSED'&&r.lifecycle!=='ARCHIVED').reduce((sum,r)=>sum+r[field],0)
+  records.filter(r=>r.currency===currency&&['ACQUIRED','ACTIVE','SUSPENDED'].includes(r.lifecycle)).reduce((sum,r)=>sum+r[field],0)
 export const distinctCurrencies=(records:AssetRecord[]):string[]=>[...new Set(records.map(r=>r.currency))].sort()
 export type SearchCriteria={query:string;category:string;subcategory:string;lifecycle:string;risk:string;tag:string;minValue:string;maxValue:string;order:string}
 export function searchAssets(records:AssetRecord[],criteria:SearchCriteria):AssetRecord[] {
