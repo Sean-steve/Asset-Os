@@ -78,7 +78,7 @@ function AssetGlyph({asset}: {asset:Asset}) {
 
 function AssetTable({onSelect,onViewAll}: {onSelect:(asset:Asset)=>void;onViewAll:()=>void}) {
   return <Surface title="Your assets" action={<button className="link-button" onClick={onViewAll}>View all <ArrowRight size={15}/></button>} className="assets-surface">
-    <div className="asset-filter-row"><button className="filter-pill selected" type="button">All assets <span>05</span></button><span className="filter-caption">Current portfolio snapshot · Demo</span></div>
+    <div className="asset-filter-row"><span className="filter-pill selected">All assets <span>05</span></span><span className="filter-caption">Current portfolio snapshot · Demo</span></div>
     <div className="table-scroll"><table className="asset-table"><thead><tr><th>ASSET</th><th>CATEGORY</th><th>CURRENT VALUE</th><th>EQUITY</th><th>STATUS</th><th aria-label="Open"></th></tr></thead><tbody>
       {assets.map(asset=><tr key={asset.id} onClick={()=>onSelect(asset)} className="asset-row">
         <td><button className="asset-name-button" onClick={e=>{e.stopPropagation();onSelect(asset)}}><AssetGlyph asset={asset}/><span><strong>{asset.name}</strong><small>{asset.subtype}</small></span></button></td>
