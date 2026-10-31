@@ -2,10 +2,10 @@ import { useEffect, useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
 import {
   Activity, ArrowRight, ArrowUpRight, BarChart3, Bell, BookOpen,
-  BriefcaseBusiness, Building2, CalendarDays, CarFront, CheckCircle2,
-  ChevronDown, ChevronRight, CircleHelp, Clock3, Coins, Component,
+  BriefcaseBusiness, Building2, CalendarDays, CarFront,
+  ChevronDown, ChevronRight, CircleHelp, Coins, Component,
   ExternalLink, FileText, Gauge, LayoutDashboard, Layers3, Menu,
-  Moon, Plus, Search, Server, Settings2, ShieldCheck, Sparkles,
+  Moon, Plus, Search, Server, ShieldCheck, Sparkles,
   Sun, TrendingUp, Wallet, Wrench, X, type LucideIcon
 } from 'lucide-react'
 import { activity, alerts, allocation, assets, demoSummary, events, type Asset } from './demo'
