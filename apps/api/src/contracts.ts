@@ -44,7 +44,7 @@ export const ErrorResponse=z.object({error:z.object({
  code:z.string().min(1),message:z.string().min(1),requestId:z.string().min(1)
 }).strict()}).strict()
 export const API_VERSION='1'
-export const CONTRACT_VERSION='2026-10-31.b1'
+export const CONTRACT_VERSION='2026-10-31.b2'
 export const IDENTITY_NOT_CONFIGURED='IDENTITY_NOT_CONFIGURED'
 export const FOUNDATION_ONLY_CAPABILITIES=[
  'health_liveness','health_readiness','openapi_contract','postgresql_migrations',
@@ -79,4 +79,62 @@ export const B1_CAPABILITIES=[
   'oidc_rs256_jwks_verification','tenant_membership_authorization',
   'asset_registry_create_read_update','idempotent_registry_commands',
   'optimistic_asset_versioning','transactional_registry_audit_outbox'
+] as const
+
+
+// B2 lifecycle facts: monetary amounts are exact nonnegative decimal strings.
+export const AcquisitionMethod=z.enum(['PURCHASE','TRANSFER','GIFT','INHERITANCE','CREATION','EXCHANGE','INVESTMENT','OTHER'])
+export const OwnershipDimension=z.enum(['ECONOMIC','BENEFICIAL','LEGAL','CONTROL'])
+export const DispositionKind=z.enum(['SALE','TRANSFER','DONATION','WRITE_OFF','DESTRUCTION','TRADE','OTHER'])
+export const CostComponents=['purchase','taxes','fees','installation','improvements','other'] as const
+export const Costs=z.object({
+ purchase:DecimalMoney.default('0'),taxes:DecimalMoney.default('0'),
+ fees:DecimalMoney.default('0'),installation:DecimalMoney.default('0'),
+ improvements:DecimalMoney.default('0'),other:DecimalMoney.default('0')
+}).strict()
+export const AcquireRequest=z.object({
+ method:AcquisitionMethod,effectiveOn:IsoDate,
+ counterpartyLabel:z.string().max(120).default(''),
+ evidenceReference:z.string().max(140).default(''),
+ notes:z.string().max(600).default(''),
+ costs:Costs
+}).strict()
+export const LifecycleCommand=z.object({
+ action:z.enum(['START_ACQUISITION','ACTIVATE','SUSPEND','REACTIVATE','ARCHIVE']),
+ reason:z.string().trim().min(1).max(400)
+}).strict()
+export const OwnershipAssignment=z.object({
+ dimension:OwnershipDimension,
+ partyRef:z.string().trim().min(1).max(90),
+ partyLabel:z.string().trim().min(1).max(120),
+ percentage:DecimalMoney.nullable(),
+ effectiveOn:IsoDate,
+ note:z.string().max(400).default('')
+}).strict().superRefine((v,ctx)=>{
+ const p=v.percentage===null?null:Number(v.percentage)
+ if(['ECONOMIC','BENEFICIAL'].includes(v.dimension) && (p===null||p<=0||p>100))
+  ctx.addIssue({code:'custom',message:'Economic and beneficial interests require a percentage between 0.01 and 100.',path:['percentage']})
+ if(['LEGAL','CONTROL'].includes(v.dimension) && p!==null)
+  ctx.addIssue({code:'custom',message:'Legal and control interests are nonpercentage references.',path:['percentage']})
+})
+export const OwnershipTransfer=z.object({
+ sourceInterestId:Uuid,
+ toPartyRef:z.string().trim().min(1).max(90),
+ toPartyLabel:z.string().trim().min(1).max(120),
+ percentage:DecimalMoney,
+ effectiveOn:IsoDate,
+ note:z.string().max(400).default('')
+}).strict()
+export const DispositionRequest=z.object({
+ kind:DispositionKind,effectiveOn:IsoDate,
+ proceeds:DecimalMoney,costs:DecimalMoney,
+ counterpartyLabel:z.string().max(120).default(''),
+ reason:z.string().trim().min(1).max(400),
+ confirm:z.literal('DISPOSE')
+}).strict()
+export const B2_CAPABILITIES=[
+ ...B1_CAPABILITIES,
+ 'lifecycle_guarded_transitions','acquisition_cost_basis_recording',
+ 'ownership_dimension_assignments_and_transfers','disposition_and_archive_history',
+ 'versioned_idempotent_lifecycle_commands','atomic_audit_outbox_on_lifecycle_changes'
 ] as const

@@ -5,7 +5,7 @@ import {randomUUID} from 'node:crypto'
 import type {Pool} from 'pg'
 import {checkReadiness,type TenantSqlClient} from './database.js'
 import {
- API_VERSION,CONTRACT_VERSION,B1_CAPABILITIES,identityNotConfigured
+ API_VERSION,CONTRACT_VERSION,B2_CAPABILITIES,identityNotConfigured
 } from './contracts.js'
 import {
  ApiFault,authenticate,requireMembership,requireRole,selectTenant,
@@ -13,6 +13,8 @@ import {
 } from './identity.js'
 import {withTenantTransaction} from './database.js'
 import {createAsset,getAsset,listAssets,updateAsset,etag} from './registry.js'
+import {startOrTransition,acquire,assignInterest,transferInterest,dispose,lifecycleSnapshot,listDomainHistory} from './lifecycle.js'
+import type {FastifyReply} from 'fastify'
 
 type PoolPort=Pick<Pool,'query'|'end'> & Partial<Pick<Pool,'connect'>>
 const openapi=JSON.parse(readFileSync(new URL('../openapi/openapi.json',import.meta.url),'utf8')) as object
@@ -52,16 +54,16 @@ export function buildApp(pool:PoolPort,verifier:OidcVerifier|null=null){
   reply.header('X-Frame-Options','DENY')
   return payload
  })
- app.get('/health/live',async()=>({status:'ok',service:'asset-os-api',phase:'B1'}))
+ app.get('/health/live',async()=>({status:'ok',service:'asset-os-api',phase:'B2'}))
  app.get('/health/ready',async(_request,reply)=>{
-  try{if(await checkReadiness(pool))return {status:'ready',database:'reachable',schema:'b1'}}
+  try{if(await checkReadiness(pool))return {status:'ready',database:'reachable',schema:'b2'}}
   catch{/* redact details including connection strings */}
   return reply.code(503).send({status:'unready',database:'unavailable'})
  })
  app.get('/v1/meta',async()=>({
   apiVersion:API_VERSION,contractVersion:CONTRACT_VERSION,phase:'B1',
   runtimeDomainAccess:verifier?'OIDC_CONFIGURED_MEMBERSHIP_REQUIRED':'IDENTITY_NOT_CONFIGURED',
-  frontendConnection:'NOT_CONNECTED',capabilities:B1_CAPABILITIES
+  frontendConnection:'NOT_CONNECTED',capabilities:B2_CAPABILITIES
  }))
  app.get('/v1/openapi.json',async()=>openapi)
 
@@ -109,7 +111,69 @@ export function buildApp(pool:PoolPort,verifier:OidcVerifier|null=null){
   if(command.replayed)reply.header('Idempotent-Replayed','true')
   return command.body
  })
- // Future lifecycle/valuation/finance/ops/portfolio routes: explicitly blocked.
+ // All B2 writes run under the same verified OIDC member and tenant-scoped
+ // DB transaction as B1 registry commands; no direct lifecycle PATCH bypass.
+ function commandResponse(reply:FastifyReply,
+  result:{status:number;body:{asset:{recordVersion:number}};replayed:boolean}){
+  reply.code(result.status).header('ETag',etag(result.body.asset.recordVersion))
+  if(result.replayed)reply.header('Idempotent-Replayed','true')
+  return result.body
+ }
+ function b2Headers(req:{headers:Record<string,string|string[]|undefined>}){
+  return {ifMatch:header(req.headers['if-match']),key:header(req.headers['idempotency-key'])}
+ }
+ app.get('/v1/assets/:assetId/lifecycle',async req=>
+  authorized(req,'read',async(client,member)=>lifecycleSnapshot(client,member.tenantId,(req.params as {assetId:string}).assetId)))
+ app.get('/v1/assets/:assetId/acquisitions',async req=>
+  authorized(req,'read',async(client,member)=>(await lifecycleSnapshot(client,member.tenantId,(req.params as {assetId:string}).assetId)).acquisition))
+ app.get('/v1/assets/:assetId/cost-basis',async req=>
+  authorized(req,'read',async(client,member)=>{
+   const s=await lifecycleSnapshot(client,member.tenantId,(req.params as {assetId:string}).assetId)
+   return {assetId:s.asset.id,currency:s.asset.currency,acquisitionId:s.acquisition?.id||null,
+    costs:s.acquisition?.costs||null,costBasis:s.acquisition?.costBasis||null}
+  }))
+ app.get('/v1/assets/:assetId/ownership-interests',async req=>
+  authorized(req,'read',async(client,member)=>(await lifecycleSnapshot(client,member.tenantId,(req.params as {assetId:string}).assetId)).ownershipInterests))
+ app.get('/v1/assets/:assetId/ownership-events',async req=>
+  authorized(req,'read',async(client,member)=>(await lifecycleSnapshot(client,member.tenantId,(req.params as {assetId:string}).assetId)).ownershipChanges))
+ app.get('/v1/assets/:assetId/disposition',async req=>
+  authorized(req,'read',async(client,member)=>(await lifecycleSnapshot(client,member.tenantId,(req.params as {assetId:string}).assetId)).disposition))
+ app.get('/v1/acquisitions',async req=>
+  authorized(req,'read',async(client,member)=>listDomainHistory(client,member.tenantId,'acquisitions')))
+ app.get('/v1/dispositions',async req=>
+  authorized(req,'read',async(client,member)=>listDomainHistory(client,member.tenantId,'dispositions')))
+ app.post('/v1/assets/:assetId/lifecycle-actions',async(req,reply)=>{
+  const h=b2Headers(req)
+  const result=await authorized(req,'write',async(client,member,requestId)=>
+   startOrTransition(client,member,(req.params as {assetId:string}).assetId,req.body,h.ifMatch,h.key,requestId))
+  return commandResponse(reply,result)
+ })
+ app.post('/v1/assets/:assetId/acquisitions',async(req,reply)=>{
+  const h=b2Headers(req)
+  const result=await authorized(req,'write',async(client,member,requestId)=>
+   acquire(client,member,(req.params as {assetId:string}).assetId,req.body,h.ifMatch,h.key,requestId))
+  return commandResponse(reply,result)
+ })
+ app.post('/v1/assets/:assetId/ownership-interests',async(req,reply)=>{
+  const h=b2Headers(req)
+  const result=await authorized(req,'write',async(client,member,requestId)=>
+   assignInterest(client,member,(req.params as {assetId:string}).assetId,req.body,h.ifMatch,h.key,requestId))
+  return commandResponse(reply,result)
+ })
+ app.post('/v1/assets/:assetId/ownership-transfers',async(req,reply)=>{
+  const h=b2Headers(req)
+  const result=await authorized(req,'write',async(client,member,requestId)=>
+   transferInterest(client,member,(req.params as {assetId:string}).assetId,req.body,h.ifMatch,h.key,requestId))
+  return commandResponse(reply,result)
+ })
+ app.post('/v1/assets/:assetId/disposition',async(req,reply)=>{
+  const h=b2Headers(req)
+  const result=await authorized(req,'write',async(client,member,requestId)=>
+   dispose(client,member,(req.params as {assetId:string}).assetId,req.body,h.ifMatch,h.key,requestId))
+  return commandResponse(reply,result)
+ })
+ // Future valuation/finance/operations/portfolio commands remain blocked.
+
  app.all('/v1/*',async(request,reply)=>
   reply.code(503).send(identityNotConfigured(request.id)))
  app.setNotFoundHandler(async(request,reply)=>
