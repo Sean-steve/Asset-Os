@@ -1,0 +1,2105 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Asset OS — Backend API Contracts",
+    "version": "0.1.0-b0",
+    "summary": "Contracts, NOT available backend CRUD",
+    "description": "Phase B0 implements only health/live, health/ready, v1/meta and v1/openapi.json. ALL authenticated domain routes fail closed until trusted Personal Kernel identity, tenant policy and domain services are deployed. Asset OS does not own Finance OS ledger truth."
+  },
+  "servers": [
+    {
+      "url": "/",
+      "description": "Relative to a future API host; no production API URL claimed"
+    }
+  ],
+  "tags": [
+    {
+      "name": "Foundation"
+    },
+    {
+      "name": "Identity"
+    },
+    {
+      "name": "Registry"
+    },
+    {
+      "name": "Lifecycle"
+    },
+    {
+      "name": "Ownership"
+    },
+    {
+      "name": "Valuation"
+    },
+    {
+      "name": "Financing"
+    },
+    {
+      "name": "Economics"
+    },
+    {
+      "name": "Operations"
+    },
+    {
+      "name": "Portfolio"
+    },
+    {
+      "name": "Kernel"
+    },
+    {
+      "name": "Reporting"
+    }
+  ],
+  "security": [
+    {
+      "KernelBearer": []
+    }
+  ],
+  "paths": {
+    "/health/live": {
+      "get": {
+        "tags": [
+          "Foundation"
+        ],
+        "summary": "Process liveness (no DB dependency)",
+        "operationId": "live",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Alive",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Liveness"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/health/ready": {
+      "get": {
+        "tags": [
+          "Foundation"
+        ],
+        "summary": "Runtime role, PostgreSQL and migration readiness",
+        "operationId": "ready",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Ready",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Readiness"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Not ready",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Readiness"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/meta": {
+      "get": {
+        "tags": [
+          "Foundation"
+        ],
+        "summary": "Version and exactly which features are operational",
+        "operationId": "meta",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "B0 capabilities",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Meta"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/openapi.json": {
+      "get": {
+        "tags": [
+          "Foundation"
+        ],
+        "summary": "Versioned OpenAPI contract",
+        "operationId": "contract",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "OpenAPI v3.1 JSON",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/me": {
+      "get": {
+        "tags": [
+          "Identity"
+        ],
+        "summary": "Trusted current actor context",
+        "operationId": "GET_identity_trusted_current_actor_context",
+        "x-implementation-phase": "B1",
+        "x-runtime-status": "NOT_IMPLEMENTED_IN_B0",
+        "x-domain-authority": "PERSONAL_KERNEL",
+        "security": [
+          {
+            "KernelBearer": []
+          }
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Meta"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Domain access intentionally blocked in B0 until verified Kernel identity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/assets": {
+      "get": {
+        "tags": [
+          "Registry"
+        ],
+        "summary": "List tenant assets",
+        "operationId": "GET_registry_list_tenant_assets",
+        "x-implementation-phase": "B1",
+        "x-runtime-status": "NOT_IMPLEMENTED_IN_B0",
+        "x-domain-authority": "ASSET_OS",
+        "security": [
+          {
+            "KernelBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 30
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 512
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginatedAssets"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Domain access intentionally blocked in B0 until verified Kernel identity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Registry"
+        ],
+        "summary": "Create planned asset",
+        "operationId": "POST_registry_create_planned_asset",
+        "x-implementation-phase": "B1",
+        "x-runtime-status": "NOT_IMPLEMENTED_IN_B0",
+        "x-domain-authority": "ASSET_OS",
+        "security": [
+          {
+            "KernelBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 8,
+              "maxLength": 128
+            },
+            "description": "Stable per-tenant key; server enforces request hash and exactly-once command semantics when implemented."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateAsset"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Accepted contract response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Asset"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Domain access intentionally blocked in B0 until verified Kernel identity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/assets/{assetId}": {
+      "get": {
+        "tags": [
+          "Registry"
+        ],
+        "summary": "Get tenant asset",
+        "operationId": "GET_registry_get_tenant_asset",
+        "x-implementation-phase": "B1",
+        "x-runtime-status": "NOT_IMPLEMENTED_IN_B0",
+        "x-domain-authority": "ASSET_OS",
+        "security": [
+          {
+            "KernelBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "assetId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Asset"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Domain access intentionally blocked in B0 until verified Kernel identity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "Registry"
+        ],
+        "summary": "Update asset with optimistic version",
+        "operationId": "PATCH_registry_update_asset_with_optimistic_version",
+        "x-implementation-phase": "B1",
+        "x-runtime-status": "NOT_IMPLEMENTED_IN_B0",
+        "x-domain-authority": "ASSET_OS",
+        "security": [
+          {
+            "KernelBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "assetId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 8,
+              "maxLength": 128
+            },
+            "description": "Stable per-tenant key; server enforces request hash and exactly-once command semantics when implemented."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateAsset"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Asset"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Domain access intentionally blocked in B0 until verified Kernel identity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/assets/{assetId}/acquisitions": {
+      "post": {
+        "tags": [
+          "Lifecycle"
+        ],
+        "summary": "Complete asset acquisition",
+        "operationId": "POST_lifecycle_complete_asset_acquisition",
+        "x-implementation-phase": "B2",
+        "x-runtime-status": "NOT_IMPLEMENTED_IN_B0",
+        "x-domain-authority": "ASSET_OS",
+        "security": [
+          {
+            "KernelBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "assetId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 8,
+              "maxLength": 128
+            },
+            "description": "Stable per-tenant key; server enforces request hash and exactly-once command semantics when implemented."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AcquisitionRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Accepted contract response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Acquisition"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Domain access intentionally blocked in B0 until verified Kernel identity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/assets/{assetId}/ownership-interests": {
+      "post": {
+        "tags": [
+          "Ownership"
+        ],
+        "summary": "Record dimension-specific ownership",
+        "operationId": "POST_ownership_record_dimension_specific_ownership",
+        "x-implementation-phase": "B2",
+        "x-runtime-status": "NOT_IMPLEMENTED_IN_B0",
+        "x-domain-authority": "ASSET_OS",
+        "security": [
+          {
+            "KernelBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "assetId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 8,
+              "maxLength": 128
+            },
+            "description": "Stable per-tenant key; server enforces request hash and exactly-once command semantics when implemented."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OwnershipInterestRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Accepted contract response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Asset"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Domain access intentionally blocked in B0 until verified Kernel identity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/assets/{assetId}/valuations": {
+      "post": {
+        "tags": [
+          "Valuation"
+        ],
+        "summary": "Record evidence-linked valuation draft",
+        "operationId": "POST_valuation_record_evidence_linked_valuation_draft",
+        "x-implementation-phase": "B3",
+        "x-runtime-status": "NOT_IMPLEMENTED_IN_B0",
+        "x-domain-authority": "ASSET_OS",
+        "security": [
+          {
+            "KernelBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "assetId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 8,
+              "maxLength": 128
+            },
+            "description": "Stable per-tenant key; server enforces request hash and exactly-once command semantics when implemented."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ValuationRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Accepted contract response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Asset"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Domain access intentionally blocked in B0 until verified Kernel identity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/assets/{assetId}/financing-facilities": {
+      "post": {
+        "tags": [
+          "Financing"
+        ],
+        "summary": "Record financing facility",
+        "operationId": "POST_financing_record_financing_facility",
+        "x-implementation-phase": "B3",
+        "x-runtime-status": "NOT_IMPLEMENTED_IN_B0",
+        "x-domain-authority": "ASSET_OS",
+        "security": [
+          {
+            "KernelBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "assetId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 8,
+              "maxLength": 128
+            },
+            "description": "Stable per-tenant key; server enforces request hash and exactly-once command semantics when implemented."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FinancingRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Accepted contract response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Asset"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Domain access intentionally blocked in B0 until verified Kernel identity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/assets/{assetId}/cash-flow-observations": {
+      "post": {
+        "tags": [
+          "Economics"
+        ],
+        "summary": "Record user-entered or governed Finance OS projection",
+        "operationId": "POST_economics_record_user_entered_or_governed_finance_",
+        "x-implementation-phase": "B3",
+        "x-runtime-status": "NOT_IMPLEMENTED_IN_B0",
+        "x-domain-authority": "FINANCE_OS_LEDGER_EXTERNAL",
+        "security": [
+          {
+            "KernelBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "assetId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 8,
+              "maxLength": 128
+            },
+            "description": "Stable per-tenant key; server enforces request hash and exactly-once command semantics when implemented."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CashFlowObservationRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Accepted contract response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Asset"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Domain access intentionally blocked in B0 until verified Kernel identity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/assets/{assetId}/maintenance-plans": {
+      "post": {
+        "tags": [
+          "Operations"
+        ],
+        "summary": "Create recurring maintenance plan",
+        "operationId": "POST_operations_create_recurring_maintenance_plan",
+        "x-implementation-phase": "B4",
+        "x-runtime-status": "NOT_IMPLEMENTED_IN_B0",
+        "x-domain-authority": "ASSET_OS",
+        "security": [
+          {
+            "KernelBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "assetId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 8,
+              "maxLength": 128
+            },
+            "description": "Stable per-tenant key; server enforces request hash and exactly-once command semantics when implemented."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MaintenanceRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Accepted contract response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Asset"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Domain access intentionally blocked in B0 until verified Kernel identity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/assets/{assetId}/insurance-policies": {
+      "post": {
+        "tags": [
+          "Operations"
+        ],
+        "summary": "Record insurance metadata, not proof of coverage",
+        "operationId": "POST_operations_record_insurance_metadata_not_proof_of_c",
+        "x-implementation-phase": "B4",
+        "x-runtime-status": "NOT_IMPLEMENTED_IN_B0",
+        "x-domain-authority": "ASSET_OS",
+        "security": [
+          {
+            "KernelBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "assetId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 8,
+              "maxLength": 128
+            },
+            "description": "Stable per-tenant key; server enforces request hash and exactly-once command semantics when implemented."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InsuranceRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Accepted contract response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Asset"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Domain access intentionally blocked in B0 until verified Kernel identity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/portfolios": {
+      "get": {
+        "tags": [
+          "Portfolio"
+        ],
+        "summary": "List tenant portfolios",
+        "operationId": "GET_portfolio_list_tenant_portfolios",
+        "x-implementation-phase": "B5",
+        "x-runtime-status": "NOT_IMPLEMENTED_IN_B0",
+        "x-domain-authority": "ASSET_OS",
+        "security": [
+          {
+            "KernelBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 30
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 512
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Portfolio"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Domain access intentionally blocked in B0 until verified Kernel identity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Portfolio"
+        ],
+        "summary": "Create analytical portfolio",
+        "operationId": "POST_portfolio_create_analytical_portfolio",
+        "x-implementation-phase": "B5",
+        "x-runtime-status": "NOT_IMPLEMENTED_IN_B0",
+        "x-domain-authority": "ASSET_OS",
+        "security": [
+          {
+            "KernelBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 8,
+              "maxLength": 128
+            },
+            "description": "Stable per-tenant key; server enforces request hash and exactly-once command semantics when implemented."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreatePortfolio"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Accepted contract response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Portfolio"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Domain access intentionally blocked in B0 until verified Kernel identity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/portfolios/{portfolioId}": {
+      "get": {
+        "tags": [
+          "Portfolio"
+        ],
+        "summary": "Read portfolio membership projection",
+        "operationId": "GET_portfolio_read_portfolio_membership_projection",
+        "x-implementation-phase": "B5",
+        "x-runtime-status": "NOT_IMPLEMENTED_IN_B0",
+        "x-domain-authority": "ASSET_OS",
+        "security": [
+          {
+            "KernelBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "portfolioId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Portfolio"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Domain access intentionally blocked in B0 until verified Kernel identity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/kernel/action-proposals": {
+      "post": {
+        "tags": [
+          "Kernel"
+        ],
+        "summary": "Create draft action proposal only",
+        "operationId": "POST_kernel_create_draft_action_proposal_only",
+        "x-implementation-phase": "B6",
+        "x-runtime-status": "NOT_IMPLEMENTED_IN_B0",
+        "x-domain-authority": "PERSONAL_KERNEL_FINAL_SCHEDULE_AUTHORITY",
+        "security": [
+          {
+            "KernelBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 8,
+              "maxLength": 128
+            },
+            "description": "Stable per-tenant key; server enforces request hash and exactly-once command semantics when implemented."
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Accepted contract response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/KernelActionProposal"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Domain access intentionally blocked in B0 until verified Kernel identity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/reports": {
+      "get": {
+        "tags": [
+          "Reporting"
+        ],
+        "summary": "Get authorized report projection",
+        "operationId": "GET_reporting_get_authorized_report_projection",
+        "x-implementation-phase": "B6",
+        "x-runtime-status": "NOT_IMPLEMENTED_IN_B0",
+        "x-domain-authority": "ASSET_OS",
+        "security": [
+          {
+            "KernelBearer": []
+          }
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Meta"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Domain access intentionally blocked in B0 until verified Kernel identity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "KernelBearer": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "description": "Future verified Personal Kernel/OIDC issuer, audience and JWKS; not configured in Phase B0"
+      }
+    },
+    "schemas": {
+      "Error": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "error"
+        ],
+        "properties": {
+          "error": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "code",
+              "message",
+              "requestId"
+            ],
+            "properties": {
+              "code": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 100
+              },
+              "message": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 500
+              },
+              "requestId": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 100
+              }
+            }
+          }
+        }
+      },
+      "Liveness": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "status",
+          "service",
+          "phase"
+        ],
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "ok"
+            ]
+          },
+          "service": {
+            "type": "string"
+          },
+          "phase": {
+            "type": "string",
+            "enum": [
+              "B0"
+            ]
+          }
+        }
+      },
+      "Readiness": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "status",
+          "database"
+        ],
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "ready",
+              "unready"
+            ]
+          },
+          "database": {
+            "type": "string",
+            "enum": [
+              "reachable",
+              "unavailable"
+            ]
+          },
+          "schema": {
+            "type": "string"
+          }
+        }
+      },
+      "Meta": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "apiVersion",
+          "contractVersion",
+          "phase",
+          "runtimeDomainAccess",
+          "frontendConnection",
+          "capabilities"
+        ],
+        "properties": {
+          "apiVersion": {
+            "type": "string"
+          },
+          "contractVersion": {
+            "type": "string"
+          },
+          "phase": {
+            "type": "string"
+          },
+          "runtimeDomainAccess": {
+            "type": "string"
+          },
+          "frontendConnection": {
+            "type": "string"
+          },
+          "capabilities": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "MoneyString": {
+        "type": "string",
+        "pattern": "^(0|[1-9][0-9]{0,17})(\\.[0-9]{1,2})?$",
+        "description": "Exact decimal string, never JavaScript floating point or inferred exchange conversion."
+      },
+      "Asset": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "tenantId",
+          "assetNumber",
+          "name",
+          "category",
+          "subcategory",
+          "currency",
+          "registryValue",
+          "valueAsOf",
+          "lifecycle",
+          "recordVersion",
+          "createdAt",
+          "updatedAt"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "tenantId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "assetNumber": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "category": {
+            "type": "string"
+          },
+          "subcategory": {
+            "type": "string"
+          },
+          "currency": {
+            "type": "string",
+            "pattern": "^[A-Z]{3}$"
+          },
+          "registryValue": {
+            "oneOf": [
+              {
+                "type": "string",
+                "pattern": "^(0|[1-9][0-9]{0,17})(\\.[0-9]{1,2})?$",
+                "description": "Exact decimal string, never JavaScript floating point or inferred exchange conversion."
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "valueAsOf": {
+            "oneOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "lifecycle": {
+            "type": "string",
+            "enum": [
+              "PLANNED",
+              "ACQUISITION_PENDING",
+              "ACQUIRED",
+              "ACTIVE",
+              "SUSPENDED",
+              "DISPOSED",
+              "ARCHIVED"
+            ]
+          },
+          "recordVersion": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "CreateAsset": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "name",
+          "category",
+          "currency"
+        ],
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 1200
+          },
+          "category": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 120
+          },
+          "subcategory": {
+            "type": "string",
+            "maxLength": 120
+          },
+          "currency": {
+            "type": "string",
+            "pattern": "^[A-Z]{3}$"
+          },
+          "registryValue": {
+            "oneOf": [
+              {
+                "type": "string",
+                "pattern": "^(0|[1-9][0-9]{0,17})(\\.[0-9]{1,2})?$",
+                "description": "Exact decimal string, never JavaScript floating point or inferred exchange conversion."
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "valueAsOf": {
+            "oneOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "locationLabel": {
+            "type": "string",
+            "maxLength": 160
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 80
+            },
+            "maxItems": 40
+          }
+        }
+      },
+      "PaginatedAssets": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "items",
+          "nextCursor",
+          "limit"
+        ],
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Asset"
+            }
+          },
+          "nextCursor": {
+            "oneOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100
+          }
+        }
+      },
+      "Acquisition": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "assetId",
+          "method",
+          "effectiveOn",
+          "currency",
+          "recordedAt"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "assetId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "method": {
+            "type": "string",
+            "enum": [
+              "PURCHASE",
+              "TRANSFER",
+              "GIFT",
+              "INHERITANCE",
+              "CREATION",
+              "EXCHANGE",
+              "INVESTMENT",
+              "OTHER"
+            ]
+          },
+          "effectiveOn": {
+            "type": "string",
+            "format": "date"
+          },
+          "currency": {
+            "type": "string",
+            "pattern": "^[A-Z]{3}$"
+          },
+          "recordedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "AcquisitionRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "method",
+          "effectiveOn",
+          "costs"
+        ],
+        "properties": {
+          "method": {
+            "type": "string",
+            "enum": [
+              "PURCHASE",
+              "TRANSFER",
+              "GIFT",
+              "INHERITANCE",
+              "CREATION",
+              "EXCHANGE",
+              "INVESTMENT",
+              "OTHER"
+            ]
+          },
+          "effectiveOn": {
+            "type": "string",
+            "format": "date"
+          },
+          "evidenceReference": {
+            "type": "string",
+            "maxLength": 140
+          },
+          "costs": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string",
+              "pattern": "^(0|[1-9][0-9]{0,17})(\\.[0-9]{1,2})?$",
+              "description": "Exact decimal string, never JavaScript floating point or inferred exchange conversion."
+            },
+            "properties": {
+              "purchase": {
+                "type": "string",
+                "pattern": "^(0|[1-9][0-9]{0,17})(\\.[0-9]{1,2})?$",
+                "description": "Exact decimal string, never JavaScript floating point or inferred exchange conversion."
+              },
+              "taxes": {
+                "type": "string",
+                "pattern": "^(0|[1-9][0-9]{0,17})(\\.[0-9]{1,2})?$",
+                "description": "Exact decimal string, never JavaScript floating point or inferred exchange conversion."
+              },
+              "fees": {
+                "type": "string",
+                "pattern": "^(0|[1-9][0-9]{0,17})(\\.[0-9]{1,2})?$",
+                "description": "Exact decimal string, never JavaScript floating point or inferred exchange conversion."
+              },
+              "installation": {
+                "type": "string",
+                "pattern": "^(0|[1-9][0-9]{0,17})(\\.[0-9]{1,2})?$",
+                "description": "Exact decimal string, never JavaScript floating point or inferred exchange conversion."
+              },
+              "improvements": {
+                "type": "string",
+                "pattern": "^(0|[1-9][0-9]{0,17})(\\.[0-9]{1,2})?$",
+                "description": "Exact decimal string, never JavaScript floating point or inferred exchange conversion."
+              },
+              "other": {
+                "type": "string",
+                "pattern": "^(0|[1-9][0-9]{0,17})(\\.[0-9]{1,2})?$",
+                "description": "Exact decimal string, never JavaScript floating point or inferred exchange conversion."
+              }
+            }
+          }
+        }
+      },
+      "OwnershipInterestRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "dimension",
+          "partyRef",
+          "effectiveFrom"
+        ],
+        "properties": {
+          "dimension": {
+            "type": "string",
+            "enum": [
+              "ECONOMIC",
+              "BENEFICIAL",
+              "LEGAL",
+              "CONTROL"
+            ]
+          },
+          "partyRef": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 140
+          },
+          "percentage": {
+            "oneOf": [
+              {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 100
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "effectiveFrom": {
+            "type": "string",
+            "format": "date"
+          }
+        }
+      },
+      "ValuationRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "effectiveOn",
+          "amount",
+          "currency",
+          "method",
+          "confidence",
+          "sourceLabel"
+        ],
+        "properties": {
+          "effectiveOn": {
+            "type": "string",
+            "format": "date"
+          },
+          "amount": {
+            "type": "string",
+            "pattern": "^(0|[1-9][0-9]{0,17})(\\.[0-9]{1,2})?$",
+            "description": "Exact decimal string, never JavaScript floating point or inferred exchange conversion."
+          },
+          "currency": {
+            "type": "string",
+            "pattern": "^[A-Z]{3}$"
+          },
+          "method": {
+            "type": "string",
+            "enum": [
+              "MARKET_COMPARABLES",
+              "INCOME_APPROACH",
+              "COST_APPROACH",
+              "BROKER_STATEMENT",
+              "APPRAISAL",
+              "MANUAL_ESTIMATE"
+            ]
+          },
+          "confidence": {
+            "type": "string",
+            "enum": [
+              "LOW",
+              "MEDIUM",
+              "HIGH"
+            ]
+          },
+          "sourceLabel": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 140
+          }
+        }
+      },
+      "FinancingRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "financierLabel",
+          "originalPrincipal",
+          "currency",
+          "interestRatePct",
+          "startedOn"
+        ],
+        "properties": {
+          "financierLabel": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 140
+          },
+          "originalPrincipal": {
+            "type": "string",
+            "pattern": "^(0|[1-9][0-9]{0,17})(\\.[0-9]{1,2})?$",
+            "description": "Exact decimal string, never JavaScript floating point or inferred exchange conversion."
+          },
+          "currency": {
+            "type": "string",
+            "pattern": "^[A-Z]{3}$"
+          },
+          "interestRatePct": {
+            "type": "string",
+            "description": "Decimal percentage string, 0–1000"
+          },
+          "startedOn": {
+            "type": "string",
+            "format": "date"
+          },
+          "maturesOn": {
+            "oneOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        }
+      },
+      "CashFlowObservationRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "kind",
+          "category",
+          "amount",
+          "currency",
+          "occurredOn"
+        ],
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "INCOME",
+              "EXPENSE",
+              "CAPEX",
+              "FINANCING_INFLOW",
+              "FINANCING_OUTFLOW"
+            ]
+          },
+          "category": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 140
+          },
+          "amount": {
+            "type": "string",
+            "pattern": "^(0|[1-9][0-9]{0,17})(\\.[0-9]{1,2})?$",
+            "description": "Exact decimal string, never JavaScript floating point or inferred exchange conversion."
+          },
+          "currency": {
+            "type": "string",
+            "pattern": "^[A-Z]{3}$"
+          },
+          "occurredOn": {
+            "type": "string",
+            "format": "date"
+          },
+          "sourceAuthority": {
+            "type": "string",
+            "enum": [
+              "USER_ENTRY",
+              "FINANCE_OS_PROJECTION"
+            ]
+          },
+          "sourceEventId": {
+            "type": "string"
+          }
+        }
+      },
+      "MaintenanceRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "title",
+          "intervalValue",
+          "intervalUnit",
+          "nextDue"
+        ],
+        "properties": {
+          "title": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 180
+          },
+          "intervalValue": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 3650
+          },
+          "intervalUnit": {
+            "type": "string",
+            "enum": [
+              "DAYS",
+              "WEEKS",
+              "MONTHS"
+            ]
+          },
+          "nextDue": {
+            "type": "string",
+            "format": "date"
+          }
+        }
+      },
+      "InsuranceRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "insurerLabel",
+          "policyType",
+          "startOn",
+          "endOn",
+          "coverageAmount",
+          "currency"
+        ],
+        "properties": {
+          "insurerLabel": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160
+          },
+          "policyType": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 120
+          },
+          "startOn": {
+            "type": "string",
+            "format": "date"
+          },
+          "endOn": {
+            "type": "string",
+            "format": "date"
+          },
+          "coverageAmount": {
+            "type": "string",
+            "pattern": "^(0|[1-9][0-9]{0,17})(\\.[0-9]{1,2})?$",
+            "description": "Exact decimal string, never JavaScript floating point or inferred exchange conversion."
+          },
+          "currency": {
+            "type": "string",
+            "pattern": "^[A-Z]{3}$"
+          },
+          "policyReference": {
+            "type": "string"
+          }
+        }
+      },
+      "Portfolio": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "name",
+          "description",
+          "currency",
+          "archivedAt"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "currency": {
+            "type": "string",
+            "pattern": "^[A-Z]{3}$"
+          },
+          "archivedAt": {
+            "oneOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        }
+      },
+      "CreatePortfolio": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "name",
+          "currency"
+        ],
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160
+          },
+          "currency": {
+            "type": "string",
+            "pattern": "^[A-Z]{3}$"
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 500
+          }
+        }
+      },
+      "KernelActionProposal": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "assetId",
+          "title",
+          "status",
+          "proposedDueOn"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "assetId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "title": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "DRAFT",
+              "REVIEWED_LOCALLY",
+              "DISMISSED"
+            ]
+          },
+          "proposedDueOn": {
+            "oneOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        }
+      },
+      "EventEnvelope": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "eventId",
+          "tenantId",
+          "correlationId",
+          "causationId",
+          "schemaVersion",
+          "type",
+          "aggregateKind",
+          "aggregateId",
+          "occurredAt",
+          "payload"
+        ],
+        "properties": {
+          "eventId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "tenantId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "correlationId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "causationId": {
+            "oneOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "schemaVersion": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "type": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 140
+          },
+          "aggregateKind": {
+            "type": "string"
+          },
+          "aggregateId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "occurredAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "payload": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        }
+      },
+      "CursorQuery": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "limit"
+        ],
+        "properties": {
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100
+          },
+          "cursor": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}

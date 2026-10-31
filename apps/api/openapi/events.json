@@ -1,0 +1,107 @@
+{
+  "version": "2026-10-31.b0",
+  "transport": "NOT_CONFIGURED",
+  "owner": "ASSET_OS",
+  "allowedEmissions": [
+    {
+      "type": "asset.registered.v1",
+      "producer": "ASSET_OS",
+      "recipient": [
+        "WEALTH_OS",
+        "PERSONAL_KERNEL"
+      ],
+      "authority": "asset identity/registration",
+      "payloadFields": [
+        "assetId",
+        "currency",
+        "lifecycle",
+        "recordVersion"
+      ]
+    },
+    {
+      "type": "asset.acquisition.recorded.v1",
+      "producer": "ASSET_OS",
+      "recipient": [
+        "PERSONAL_KERNEL",
+        "WEALTH_OS"
+      ],
+      "authority": "acquisition evidence only",
+      "payloadFields": [
+        "assetId",
+        "acquisitionId",
+        "effectiveOn",
+        "currency"
+      ]
+    },
+    {
+      "type": "asset.valuation.accepted.v1",
+      "producer": "ASSET_OS",
+      "recipient": [
+        "WEALTH_OS"
+      ],
+      "authority": "reviewed valuation projection, not external appraisal",
+      "payloadFields": [
+        "assetId",
+        "valuationId",
+        "currency",
+        "effectiveOn",
+        "amount"
+      ]
+    },
+    {
+      "type": "asset.maintenance.due.v1",
+      "producer": "ASSET_OS",
+      "recipient": [
+        "PERSONAL_KERNEL",
+        "MISSION_OS"
+      ],
+      "authority": "proposed work only, never schedule execution",
+      "payloadFields": [
+        "assetId",
+        "planId",
+        "dueOn"
+      ]
+    },
+    {
+      "type": "asset.disposition.recorded.v1",
+      "producer": "ASSET_OS",
+      "recipient": [
+        "WEALTH_OS"
+      ],
+      "authority": "disposition history, not payment instruction",
+      "payloadFields": [
+        "assetId",
+        "dispositionId",
+        "effectiveOn",
+        "currency"
+      ]
+    }
+  ],
+  "allowedConsumption": [
+    {
+      "type": "finance.transaction.reconciled.v1",
+      "producer": "FINANCE_OS",
+      "owner": "FINANCE_OS",
+      "effect": "verified read-only cash flow fact, never double-post ledger"
+    },
+    {
+      "type": "kernel.subject.bound.v1",
+      "producer": "PERSONAL_KERNEL",
+      "owner": "PERSONAL_KERNEL",
+      "effect": "verified identity and tenant scope; absent in B0"
+    }
+  ],
+  "envelope": {
+    "$ref": "./openapi.json#/components/schemas/EventEnvelope"
+  },
+  "controls": [
+    "schema versioning",
+    "verified producer",
+    "tenant scoping",
+    "idempotent inbox",
+    "atomic outbox",
+    "correlation and causation IDs",
+    "minimum necessary payload",
+    "no background delivery B0"
+  ]
+}
