@@ -272,7 +272,7 @@ function UtilizationDetails(props:Props){
  </>
 }
 function Evidence(props:Props){
- const {store,navigate}=props
+ const {store}=props
  const [form,setForm]=useState(false),[assetId,setAssetId]=useState(''),[kind,setKind]=useState<EvidenceKind>('COMPLIANCE'),
  [name,setName]=useState(''),[ref,setRef]=useState(''),[issued,setIssued]=useState(''),
  [expires,setExpires]=useState(''),[notes,setNotes]=useState(''),[filter,setFilter]=useState(''),[error,setError]=useState('')
