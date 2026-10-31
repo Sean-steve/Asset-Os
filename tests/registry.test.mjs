@@ -14,11 +14,11 @@ const asInput = (record) => {
 }
 const today='2026-10-31T12:00:00.000Z'
 
-test('phases one through four have 40 implemented screens and 20 planned',()=>{
+test('phases one through five have 50 implemented screens and 10 planned',()=>{
   assert.equal(screens.length,60)
   assert.deepEqual(screens.slice(0,10).map(s=>s.id),[1,2,3,4,5,6,7,8,9,10])
-  assert.equal(screens.filter(s=>s.status==='implemented').length,40)
-  assert.equal(screens.filter(s=>s.status==='planned').length,20)
+  assert.equal(screens.filter(s=>s.status==='implemented').length,50)
+  assert.equal(screens.filter(s=>s.status==='planned').length,10)
 })
 
 test('synthetic seed contains five distinct assets, KES totals reconcile',()=>{

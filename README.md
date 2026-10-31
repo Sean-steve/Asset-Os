@@ -1,6 +1,6 @@
 # Asset OS — Personal Kernel Asset Intelligence
 
-**Status: Phase 4 — Maintenance, Insurance & Operations frontend implemented.** No production assets, identity, finance records or Kernel services are connected. The five starter assets are synthetic. New edits, acquisition, ownership and disposition records are stored only in your browser. Income/expenses now derive from manually entered browser records; trend lines and alerts remain **demo data**.
+**Status: Phase 5 — Portfolio, Performance & Intelligence frontend implemented.** No production assets, identity, finance records or Kernel services are connected. The five starter assets are synthetic. New edits, acquisition, ownership and disposition records are stored only in your browser. Income/expenses now derive from manually entered browser records; trend lines and alerts remain **demo data**.
 
 ## Stack
 - React 19 + TypeScript
@@ -139,6 +139,40 @@ The next **10 connected frontend experiences (Screens 31–40)** are implemented
 
 **Limitations:** This is a public static React preview. It has no backend, authentication, secure vault, telematics, insurer verification, payment processing, provider dispatch, real appointment scheduling or globally authoritative calendar. Avoid real private documents and personal financial information.
 
+## Phase 5 — portfolio, performance and explainable intelligence
+
+**Screens 41–50** are implemented as navigable, browser-local, responsive React experiences. There is no production AI integration and no autonomous financial/ownership action.
+
+| ID | Experience | Hash routes |
+| --- | --- | --- |
+| 41 | Portfolio Directory | `#/portfolios` |
+| 42 | Portfolio Details & Membership | `#/portfolio/:portfolioId` |
+| 43 | Asset Allocation & Concentration | `#/allocation` |
+| 44 | Asset Comparison | `#/comparison` |
+| 45 | Performance Intelligence Center | `#/performance` |
+| 46 | Risk Management Center | `#/risk-center` |
+| 47 | Risk Assessment Details & Entry | `#/risk/:assetId`, `#/risk/new` |
+| 48 | Underperforming Assets | `#/underperforming` |
+| 49 | Forecasting & Scenario Analysis | `#/scenarios` |
+| 50 | Asset Intelligence Assistant | `#/intelligence` |
+
+### Key workflows
+
+1. Create a portfolio in one ISO currency. Add only currently held assets of that currency. Adding and removing assets changes *analytical membership*, not ownership.
+2. Inspect held-asset value, indicative equity completeness, categorized allocation and largest holding concentration. Portfolio totals must not be added together if memberships overlap.
+3. Compare two–four assets with comparable metrics. Mixed currency is surfaced explicitly; the UI never makes an implicit FX conversion or fake performance ranking.
+4. Record effective-dated risk scores across market (30%), liquidity (25%), condition (20%), regulatory (15%) and counterparty (10%) dimensions. Document source and rationale. Existing asset risk labels are **not** converted to fabricated assessments.
+5. Review evidence-derived watchlist signals: negative manually recorded operating cash flow, locally accepted valuation below acquisition cost, stale accepted valuations, high manually assessed risk or overdue entered maintenance plan. No-data is **not** positive performance.
+6. Change one-period scenario sensitivities for current value, existing entered income and expenses. Inputs are saved locally. Results are not forecasts, probabilities, IRR, investment advice or projected time series.
+7. Ask the rules-based intelligence assistant questions about stored facts, and save decision notes. There is no connected generative AI model, external financial data, autonomous decisions, task dispatch or payment execution.
+
+### Data and safety
+
+- The localStorage snapshot evolves from schema v4 to **v5** using the same existing storage key. Versions v1–v4 migrate without deleting registry, lifecycle, finance or operational histories.
+- New domain module: `src/intelligence/core.ts`. UI: `src/intelligence/IntelligenceExperience.tsx` and `src/intelligence/intelligence.css`. Tests: `tests/intelligence.test.mjs`.
+- The prototype is untrusted browser-local state, not a secure multi-tenant backend. Do not enter sensitive financial accounts, identity documents, passwords or actual private ownership/insurance data.
+- Actual governed intelligence, Wealth OS projection authority, Kernel identity, audit, permissions, real forecasting and production certification remain future work.
+
 ## GitHub Pages
 The Vite deployment base is `/Asset-Os/`. The Actions workflow is `.github/workflows/pages.yml`.
 
@@ -159,7 +193,7 @@ Asset OS owns asset-domain state. Finance OS owns the posted financial ledger, a
 | 2 — Lifecycle, acquisition and ownership (11–20) | **Implemented (frontend-only)** |
 | 3 — Valuation, financing and economics (21–30) | **Implemented (frontend-only)** |
 | 4 — Operations and protection (31–40) | **Implemented (frontend-only)** |
-| 5 — Portfolio and intelligence (41–50) | Planned |
+| 5 — Portfolio and intelligence (41–50) | **Implemented (frontend-only)** |
 | 6 — Kernel integration and administration (51–60) | Planned |
 | 7 — UI certification | Planned |
 
@@ -195,3 +229,8 @@ Do not commit credentials or personal runtime data to this public repository.
 - `src/operations/OperationsExperience.tsx` — connected Phase 4 screens 31–40
 - `src/operations/operations.css` — responsive Phase 4 UI
 - `tests/operations.test.mjs` — operational and persistence integrity regression tests
+
+- `src/intelligence/core.ts` — currency-safe portfolio aggregates, risk scoring, rule-based signals, sensitivity and decision-note commands
+- `src/intelligence/IntelligenceExperience.tsx` — Screens 41–50 in the shared premium UI
+- `src/intelligence/intelligence.css` — responsive Phase 5 visual components
+- `tests/intelligence.test.mjs` — provenance, migrations, safety and formula regression tests
