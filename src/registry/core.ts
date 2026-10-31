@@ -230,7 +230,7 @@ export function addSubcategory(state:RegistryState,name:string,subcategory:strin
   return {...state,categories:state.categories.map(c=>c.name===name?{...c,subcategories:[...c.subcategories,label]}:c)}
 }
 export const sumInCurrency=(records:AssetRecord[],field:'value'|'equity',currency:string):number=>
-  records.filter(r=>r.currency===currency&&r.lifecycle!=='DISPOSED'&&r.lifecycle!=='ARCHIVED').reduce((sum,r)=>sum+r[field],0)
+  records.filter(r=>r.currency===currency&&['ACQUIRED','ACTIVE','SUSPENDED'].includes(r.lifecycle)).reduce((sum,r)=>sum+r[field],0)
 export const distinctCurrencies=(records:AssetRecord[]):string[]=>[...new Set(records.map(r=>r.currency))].sort()
 export type SearchCriteria={query:string;category:string;subcategory:string;lifecycle:string;risk:string;tag:string;minValue:string;maxValue:string;order:string}
 export function searchAssets(records:AssetRecord[],criteria:SearchCriteria):AssetRecord[] {

@@ -132,7 +132,7 @@ function TrendChart({period,changePeriod}: {period:Period;changePeriod:(p:Period
 }
 
 function AllocationChart({items,onView}: {items:Asset[];onView:()=>void}) {
-  const kes=items.filter(a=>a.currency==='KES'&&a.lifecycle!=='DISPOSED'&&a.lifecycle!=='ARCHIVED')
+  const kes=items.filter(a=>a.currency==='KES'&&['ACQUIRED','ACTIVE','SUSPENDED'].includes(a.lifecycle||''))
   const total=kes.reduce((s,a)=>s+a.value,0)
   const segments=allocation.map(x=>({...x,value:kes.filter(a=>a.category===x.label).reduce((s,a)=>s+a.value,0)}))
   const boundaries=segments.reduce((acc,s)=>{const last=acc.length?acc[acc.length-1].end:0;const end=total>0?last+s.value/total*100:0;acc.push({...s,start:last,end});return acc},[] as Array<typeof segments[number]&{start:number;end:number}>)
@@ -146,7 +146,7 @@ function AllocationChart({items,onView}: {items:Asset[];onView:()=>void}) {
 function Performance({items,onView}: {items:Asset[];onView:()=>void}) {
   const [metric,setMetric]=useState<'Value'|'Equity'>('Value')
   const categories=allocation
-  const kes=items.filter(a=>a.currency==='KES'&&a.lifecycle!=='DISPOSED'&&a.lifecycle!=='ARCHIVED')
+  const kes=items.filter(a=>a.currency==='KES'&&['ACQUIRED','ACTIVE','SUSPENDED'].includes(a.lifecycle||''))
   const grand=kes.reduce((sum,a)=>sum+(metric==='Value'?a.value:a.equity),0)
   const series=categories.map(c=>kes.filter(a=>a.category===c.label).reduce((sum,a)=>sum+(metric==='Value'?a.value:a.equity),0))
   const maxima=Math.max(1,...series)
@@ -187,8 +187,8 @@ function Dashboard({items,store,onSelect,onPlanned,onAlert}: {items:Asset[];stor
     <div className="dashboard-layout">
       <div className="dashboard-main">
         <div className="kpi-grid">
-          <Kpi label="Tracked KES asset value" value={short(value)} change="Browser" icon={BarChart3} tone="violet" detail="local records"/>
-          <Kpi label="Tracked KES equity" value={short(equity)} change="Browser" icon={Layers3} tone="green" detail="local records"/>
+          <Kpi label="Held KES asset value" value={short(value)} change="Browser" icon={BarChart3} tone="violet" detail="local records"/>
+          <Kpi label="Held KES equity" value={short(equity)} change="Browser" icon={Layers3} tone="green" detail="local records"/>
           <Kpi label="Demo monthly income" value={short(demoSummary.monthlyIncome)} change="Illustrative" icon={TrendingUp} tone="blue" detail="vs. last month"/>
           <Kpi label="Demo monthly expenses" value={short(demoSummary.monthlyExpenses)} change="Illustrative" icon={FileText} tone="red" detail="vs. last month"/>
         </div>
@@ -273,7 +273,7 @@ export default function App() {
         </div>
         <div className="topbar-actions"><span className="demo-flag">PREVIEW</span><button type="button" className="icon-button" onClick={()=>setTheme(t=>t==='dark'?'light':'dark')} aria-label={theme==='dark'?'Switch to light theme':'Switch to dark theme'}>{theme==='dark'?<Sun size={20}/>:<Moon size={20}/>}</button><div className="notification-anchor"><button type="button" className="icon-button" aria-label="Show demo notifications" aria-expanded={notificationsOpen} onClick={()=>setNotificationsOpen(p=>!p)}><Bell size={19}/><span className="notification-dot">3</span></button>{notificationsOpen&&<div className="notification-menu"><strong>Demo notifications</strong>{alerts.slice(0,3).map(alert=><button type="button" key={alert.id} onClick={()=>{setNotificationsOpen(false);openAlert(alert.title,alert.detail)}}><span>{alert.title}</span><small>{alert.detail}</small></button>)}</div>}</div><div className="account-chip"><span>AO</span><div><strong>Preview workspace</strong><small>Local demo mode</small></div><ChevronDown size={15}/></div></div>
       </header>
-      <main className="main-content">{page==='dashboard'?<Dashboard items={items} store={store} onSelect={a=>go('asset/'+encodeURIComponent(a.id))} onPlanned={openPlanned} onAlert={openAlert}/>:page==='registry'?<RegistryExperience key={path} path={path} store={store} onChange={handleChange} navigate={go} report={report}/>:page==='lifecycle'?<LifecycleExperience key={path.split('?')[0]} path={path} store={store} onChange={handleChange} navigate={go} report={report}/>:page==='design'?<DesignSystem openModal={()=>setDialog({title:'Reusable dialog',description:'This is a working, keyboard-dismissable modal using the Asset OS dialog component.'})}/>:page==='roadmap'?<Roadmap onPhase={openPlanned} onRoute={go} firstAssetId={store.records[0]?.id||null}/>:<Planned title={plannedTitle} phase={plannedPhase}/>}
+      <main className="main-content">{page==='dashboard'?<Dashboard items={items} store={store} onSelect={a=>go('asset/'+encodeURIComponent(a.id))} onPlanned={openPlanned} onAlert={openAlert}/>:page==='registry'?<RegistryExperience key={path} path={path} store={store} onChange={handleChange} navigate={go} report={report}/>:page==='lifecycle'?<LifecycleExperience key={path} path={path} store={store} onChange={handleChange} navigate={go} report={report}/>:page==='design'?<DesignSystem openModal={()=>setDialog({title:'Reusable dialog',description:'This is a working, keyboard-dismissable modal using the Asset OS dialog component.'})}/>:page==='roadmap'?<Roadmap onPhase={openPlanned} onRoute={go} firstAssetId={store.records[0]?.id||null}/>:<Planned title={plannedTitle} phase={plannedPhase}/>}
         <footer className="app-footer"><span>© 2026 Asset OS · Personal Kernel ecosystem · Prototype only</span><div><button type="button" onClick={()=>go('roadmap')}><BookOpen size={14}/> Screen plan</button><a href="https://github.com/Sean-steve/Asset-Os" target="_blank" rel="noreferrer"><ExternalLink size={14}/> GitHub repository</a></div></footer>
       </main>
     </div>
