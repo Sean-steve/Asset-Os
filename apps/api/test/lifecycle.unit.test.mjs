@@ -12,7 +12,7 @@ test('exact-cent money never uses float; negative/overprecision/scientific forms
  assert.equal(asCents('1234.50'),123450n)
  assert.equal(money(asCents('1000000000.99')),'1000000000.99')
  assert.equal(money(-45n),'-0.45')
- for(const value of [-1,'-1.00','1.001','1e4',1.5,'01.00']){
+ for(const value of [-1,'-1.00','1.001','1e4','1.000','01.00']){
   assert.throws(()=>asCents(String(value)),/decimal string/)
  }
 })
