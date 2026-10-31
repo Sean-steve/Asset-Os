@@ -1,6 +1,12 @@
 # Asset OS — Personal Kernel Asset Intelligence
 
-**Frontend: Phase 7 certified — 60/60 screen experiences. Backend: Phase B2 lifecycle, acquisition, ownership and disposition PostgreSQL services implemented (live identity and backend deployment still unconfigured).** The hosted Pages frontend remains a browser-local preview outside the separate Secure Registry. Five starter assets are clearly illustrative; user-entered asset, ownership, finance, operation and portfolio changes persist in local browser storage only. Dashboard valuation history and operational alerts now derive only from recorded data, with honest empty states rather than synthetic activity.
+**Frontend: 60/60 Phase 7 preview screens certified, plus a separate B2.1 authenticated lifecycle workspace. Backend: B2 PostgreSQL domain services and controlled full-stack CI staging; live identity issuer and public API deployment remain unconfigured.** The hosted Pages frontend remains a browser-local preview outside the separate Secure Registry. Five starter assets are clearly illustrative; user-entered asset, ownership, finance, operation and portfolio changes persist in local browser storage only. Dashboard valuation history and operational alerts now derive only from recorded data, with honest empty states rather than synthetic activity.
+
+## Phase B2.1 — Authenticated Lifecycle Frontend & Controlled Staging
+
+The Secure Registry asset details now link to a **PostgreSQL-backed lifecycle and ownership workspace**, with guarded transitions, itemized acquisitions, percentage/non-percentage ownership assignments and transfers, recorded disposition and immutable audit history. The server revalidates every command with OIDC tenant membership, record-version ETag and idempotency. Original Phase 2 screens still use illustrative browser-local state and have a clear link to Secure Registry.
+
+A dedicated controlled CI staging suite runs the browser through a **real PostgreSQL and Fastify server**, using temporary, test-only signed OIDC/JWKS and PKCE authority. This certifies the technical end-to-end integration, **not** a real production issuer or publicly hosted staging environment. See [B2.1 architecture, certification levels and activation guide](docs/BACKEND_B2_1.md).
 
 ## Phase B2 — PostgreSQL Lifecycle, Acquisition & Ownership
 
