@@ -176,7 +176,7 @@ export function alertsFor(state:RegistryState,asOf=now().slice(0,10)):LocalAlert
  ]
  return alerts.map(a=>{
   const disp=state.phase6.dispositions.find(d=>d.key===a.key)
-  const st=disp?.state==='SNOOZED'&&disp.until!==null&&disp.until<asOf?'UNREAD':disp?.state||'UNREAD'
+  const st:LocalAlert['state']=disp?.state==='SNOOZED'&&disp.until!==null&&disp.until<asOf?'UNREAD':disp?.state||'UNREAD'
   return {...a,state:st}
  }).sort((a,b)=>a.date.localeCompare(b.date)||a.key.localeCompare(b.key))
 }
