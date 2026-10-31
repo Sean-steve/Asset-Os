@@ -39,7 +39,7 @@ jobs:
           node-version: '22'
       - name: Install frontend and backend dependencies
         run: |
-          npm ci --no-audit --no-fund
+          npm install --no-audit --no-fund
           npm --prefix apps/api install --no-audit --no-fund
       - name: Provision restricted PostgreSQL role
         env:
