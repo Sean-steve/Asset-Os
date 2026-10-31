@@ -182,6 +182,8 @@ export function transferOwnership(state:RegistryState,input:TransferInput,at=new
  if(state.phase2.interests.some(i=>i.assetId===asset.id&&i.dimension===source.dimension&&i.effectiveFrom>input.effectiveOn))throw Error('Cannot backdate before a newer interest in this dimension.')
  const targetRef=safeNote(input.partyRef,90),targetLabel=safeNote(input.partyLabel,120)
  if(!targetRef||!targetLabel||targetRef===source.partyRef)throw Error('Choose a different receiving party with a reference and name.')
+ if(activeInterests(state,asset.id,at,source.dimension).some(i=>i.partyRef===targetRef))
+  throw Error('Receiving party already has an active interest in this dimension; consolidate through an explicit ownership reconciliation.')
  const pct=input.percentage
  if(!Number.isFinite(pct)||pct<=0||pct>(source.percentage||0)||Math.abs(pct*100-Math.round(pct*100))>1e-6)throw Error('Transfer share must be positive and cannot exceed the source interest.')
  const remaining=Math.round(((source.percentage||0)-pct)*100)/100
