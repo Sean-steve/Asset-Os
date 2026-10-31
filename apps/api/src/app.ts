@@ -5,7 +5,7 @@ import {randomUUID} from 'node:crypto'
 import type {Pool} from 'pg'
 import {checkReadiness,type TenantSqlClient} from './database.js'
 import {
- API_VERSION,CONTRACT_VERSION,B2_CAPABILITIES,identityNotConfigured
+ API_VERSION,CONTRACT_VERSION,B3_CAPABILITIES,identityNotConfigured
 } from './contracts.js'
 import {
  ApiFault,authenticate,requireMembership,requireRole,selectTenant,
@@ -15,6 +15,7 @@ import {withTenantTransaction} from './database.js'
 import {createAsset,getAsset,listAssets,updateAsset,etag} from './registry.js'
 import {startOrTransition,acquire,assignInterest,transferInterest,dispose,lifecycleSnapshot,listDomainHistory} from './lifecycle.js'
 import type {FastifyReply} from 'fastify'
+import {recordValuation,acceptValuation,recordFacility,observeBalance,recordCashFlow,recordReconciliationReference,listEvidence,listFacilities,listReferences,economicsSummary} from './economics.js'
 
 type PoolPort=Pick<Pool,'query'|'end'> & Partial<Pick<Pool,'connect'>>
 const openapi=JSON.parse(readFileSync(new URL('../openapi/openapi.json',import.meta.url),'utf8')) as object
@@ -54,16 +55,16 @@ export function buildApp(pool:PoolPort,verifier:OidcVerifier|null=null){
   reply.header('X-Frame-Options','DENY')
   return payload
  })
- app.get('/health/live',async()=>({status:'ok',service:'asset-os-api',phase:'B2'}))
+ app.get('/health/live',async()=>({status:'ok',service:'asset-os-api',phase:'B3'}))
  app.get('/health/ready',async(_request,reply)=>{
-  try{if(await checkReadiness(pool))return {status:'ready',database:'reachable',schema:'b2'}}
+  try{if(await checkReadiness(pool))return {status:'ready',database:'reachable',schema:'b3'}}
   catch{/* redact details including connection strings */}
   return reply.code(503).send({status:'unready',database:'unavailable'})
  })
  app.get('/v1/meta',async()=>({
-  apiVersion:API_VERSION,contractVersion:CONTRACT_VERSION,phase:'B1',
+  apiVersion:API_VERSION,contractVersion:CONTRACT_VERSION,phase:'B3',
   runtimeDomainAccess:verifier?'OIDC_CONFIGURED_MEMBERSHIP_REQUIRED':'IDENTITY_NOT_CONFIGURED',
-  frontendConnection:'NOT_CONNECTED',capabilities:B2_CAPABILITIES
+  frontendConnection:'NOT_CONNECTED',capabilities:B3_CAPABILITIES
  }))
  app.get('/v1/openapi.json',async()=>openapi)
 
@@ -172,7 +173,64 @@ export function buildApp(pool:PoolPort,verifier:OidcVerifier|null=null){
    dispose(client,member,(req.params as {assetId:string}).assetId,req.body,h.ifMatch,h.key,requestId))
   return commandResponse(reply,result)
  })
- // Future valuation/finance/operations/portfolio commands remain blocked.
+ // B3 executes in the SAME verified membership / FORCE RLS transaction as
+ // the registry and B2 lifecycle; no caller-supplied authority headers.
+ function assetId(req:{params:unknown}){return (req.params as {assetId:string}).assetId}
+ function b3Command(reply:FastifyReply,
+  result:{status:number;body:{asset:{recordVersion:number}};replayed:boolean}){
+  return commandResponse(reply,result)
+ }
+ app.get('/v1/assets/:assetId/economics',async req=>
+  authorized(req,'read',async(client,member)=>economicsSummary(client,member.tenantId,assetId(req))))
+ app.get('/v1/assets/:assetId/valuations',async req=>
+  authorized(req,'read',async(client,member)=>listEvidence(client,member.tenantId,assetId(req),'valuations',req.query)))
+ app.post('/v1/assets/:assetId/valuations',async(req,reply)=>{
+  const h=b2Headers(req)
+  const out=await authorized(req,'write',async(client,member,id)=>
+   recordValuation(client,member,assetId(req),req.body,h.ifMatch,h.key,id))
+  return b3Command(reply,out)
+ })
+ app.post('/v1/assets/:assetId/valuations/:valuationId/accept',async(req,reply)=>{
+  const h=b2Headers(req)
+  const out=await authorized(req,'write',async(client,member,id)=>
+   acceptValuation(client,member,assetId(req),(req.params as {valuationId:string}).valuationId,req.body,h.ifMatch,h.key,id))
+  return b3Command(reply,out)
+ })
+ app.get('/v1/assets/:assetId/financing',async req=>
+  authorized(req,'read',async(client,member)=>listFacilities(client,member.tenantId,assetId(req))))
+ app.post('/v1/assets/:assetId/financing',async(req,reply)=>{
+  const h=b2Headers(req)
+  const out=await authorized(req,'write',async(client,member,id)=>
+   recordFacility(client,member,assetId(req),req.body,h.ifMatch,h.key,id))
+  return b3Command(reply,out)
+ })
+ app.get('/v1/assets/:assetId/financing/:facilityId/balances',async req=>
+  authorized(req,'read',async(client,member)=>listEvidence(client,member.tenantId,assetId(req),'balances',
+   req.query,(req.params as {facilityId:string}).facilityId)))
+ app.post('/v1/assets/:assetId/financing/:facilityId/balances',async(req,reply)=>{
+  const h=b2Headers(req)
+  const out=await authorized(req,'write',async(client,member,id)=>
+   observeBalance(client,member,assetId(req),(req.params as {facilityId:string}).facilityId,req.body,h.ifMatch,h.key,id))
+  return b3Command(reply,out)
+ })
+ app.get('/v1/assets/:assetId/cash-flows',async req=>
+  authorized(req,'read',async(client,member)=>listEvidence(client,member.tenantId,assetId(req),'cash-flows',req.query)))
+ app.post('/v1/assets/:assetId/cash-flows',async(req,reply)=>{
+  const h=b2Headers(req)
+  const out=await authorized(req,'write',async(client,member,id)=>
+   recordCashFlow(client,member,assetId(req),req.body,h.ifMatch,h.key,id))
+  return b3Command(reply,out)
+ })
+ app.get('/v1/assets/:assetId/reconciliation-references',async req=>
+  authorized(req,'read',async(client,member)=>listReferences(client,member.tenantId,assetId(req))))
+ app.post('/v1/assets/:assetId/reconciliation-references',async(req,reply)=>{
+  const h=b2Headers(req)
+  const out=await authorized(req,'write',async(client,member,id)=>
+   recordReconciliationReference(client,member,assetId(req),req.body,h.ifMatch,h.key,id))
+  return b3Command(reply,out)
+ })
+ // Future B4 operational services, portfolio execution and external integrations remain blocked.
+
 
  app.all('/v1/*',async(request,reply)=>
   reply.code(503).send(identityNotConfigured(request.id)))

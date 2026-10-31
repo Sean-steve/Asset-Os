@@ -1,6 +1,10 @@
 # Asset OS — Personal Kernel Asset Intelligence
 
-**Frontend: Phase 7 certified — 60/60 screen experiences. Backend: Phase B2 lifecycle, acquisition, ownership and disposition PostgreSQL services implemented (live identity and backend deployment still unconfigured).** The hosted Pages frontend remains a browser-local preview outside the separate Secure Registry. Five starter assets are clearly illustrative; user-entered asset, ownership, finance, operation and portfolio changes persist in local browser storage only. Dashboard valuation history and operational alerts now derive only from recorded data, with honest empty states rather than synthetic activity.
+**Frontend: Phase 7 certified — 60/60 screen experiences. Backend: Phase B3 valuation, financing and economics PostgreSQL services implemented (live identity and backend deployment still unconfigured).** The hosted Pages frontend remains a browser-local preview outside the separate Secure Registry. Five starter assets are clearly illustrative; user-entered asset, ownership, finance, operation and portfolio changes persist in local browser storage only. Dashboard valuation history and operational alerts now derive only from recorded data, with honest empty states rather than synthetic activity.
+
+## Phase B3 — Valuation, Financing & Economics Backend
+
+B3 implements server-authoritative PostgreSQL draft/accepted valuation history, facility and balance snapshots, manual asset cash-flow observations, and currency-scoped economic summaries. All writes require verified OIDC membership, strong ETags and idempotent requests. Finance OS, banking, payments and wealth reporting remain separate authorities. **The B3 financial frontend is still browser-local; live identity/API infrastructure is not activated.** See [B3 Backend Guide](docs/BACKEND_B3.md).
 
 ## Phase B2.1 — Authenticated Lifecycle Frontend Integration
 

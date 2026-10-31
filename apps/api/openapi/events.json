@@ -1,5 +1,5 @@
 {
-  "version": "2026-10-31.b2",
+  "version": "2026-10-31.b3",
   "transport": "NOT_CONFIGURED",
   "owner": "ASSET_OS",
   "allowedEmissions": [
@@ -38,13 +38,11 @@
       "recipient": [
         "WEALTH_OS"
       ],
-      "authority": "reviewed valuation projection, not external appraisal",
+      "authority": "internally reviewed valuation pointer; external appraisal and Wealth OS aggregation NOT activated",
       "payloadFields": [
         "assetId",
-        "valuationId",
-        "currency",
-        "effectiveOn",
-        "amount"
+        "recordId",
+        "recordVersion"
       ]
     },
     {
@@ -128,6 +126,76 @@
         "recordId",
         "recordVersion"
       ]
+    },
+    {
+      "type": "asset.valuation.recorded.v1",
+      "producer": "ASSET_OS",
+      "recipient": [
+        "PERSONAL_KERNEL",
+        "WEALTH_OS"
+      ],
+      "authority": "unverified draft only",
+      "payloadFields": [
+        "assetId",
+        "recordId",
+        "recordVersion"
+      ]
+    },
+    {
+      "type": "asset.financing.recorded.v1",
+      "producer": "ASSET_OS",
+      "recipient": [
+        "PERSONAL_KERNEL",
+        "WEALTH_OS"
+      ],
+      "authority": "user-entered facility metadata; no loan origination",
+      "payloadFields": [
+        "assetId",
+        "recordId",
+        "recordVersion"
+      ]
+    },
+    {
+      "type": "asset.financing.balance.observed.v1",
+      "producer": "ASSET_OS",
+      "recipient": [
+        "PERSONAL_KERNEL",
+        "WEALTH_OS"
+      ],
+      "authority": "user-recorded balance; not lender verified",
+      "payloadFields": [
+        "assetId",
+        "recordId",
+        "recordVersion"
+      ]
+    },
+    {
+      "type": "asset.cashflow.observed.v1",
+      "producer": "ASSET_OS",
+      "recipient": [
+        "PERSONAL_KERNEL",
+        "WEALTH_OS"
+      ],
+      "authority": "user-entered cashflow; never Finance OS posted transaction",
+      "payloadFields": [
+        "assetId",
+        "recordId",
+        "recordVersion"
+      ]
+    },
+    {
+      "type": "asset.finance.reference.recorded.v1",
+      "producer": "ASSET_OS",
+      "recipient": [
+        "PERSONAL_KERNEL",
+        "WEALTH_OS"
+      ],
+      "authority": "reference label only, not verified reconciliation",
+      "payloadFields": [
+        "assetId",
+        "recordId",
+        "recordVersion"
+      ]
     }
   ],
   "allowedConsumption": [
@@ -157,6 +225,7 @@
     "minimum necessary payload",
     "no background delivery B0",
     "signed OIDC subject-to-member enforcement on source commands",
-    "B2 immutable asset histories, state guards, effective-dated ownership and transaction version checks"
+    "B2 immutable asset histories, state guards, effective-dated ownership and transaction version checks",
+    "B3 asset row locking, accepted-valuation single-active index, exact-cents derived economics, immutable cashflow/financing observations"
   ]
 }

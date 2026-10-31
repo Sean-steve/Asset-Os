@@ -449,3 +449,242 @@ test('B2 acquisition and disposition history cursor navigation is tenant scoped 
  assert.equal(disposed.json().items[0].assetId,assetId)
  assert.equal(disposed.json().nextCursor,null)
 })
+
+
+// Phase B3 integration: uses the SAME signed ephemeral OIDC issuer and real
+// restricted PostgreSQL connection as B1/B2. All commands are tenant scoped.
+let b3Asset,b3Accepted1,b3Accepted2,b3Facility,b3Flow
+const econBase=(id=b3Asset)=>'/v1/assets/'+id
+const econ=async(path,payload,{id=b3Asset,token=aToken,tenant=tenantA,key='b3-'+suffix(),version}={})=>{
+ const v=version||((await inject('GET',econBase(id),{token,tenant})).headers.etag)
+ return inject('POST',econBase(id)+path,{token,tenant,
+  headers:{'if-match':v,'idempotency-key':key},payload})
+}
+test('B3 creates an acquired asset fixture with user-entered cost basis; rejects pre-acquisition economics',async()=>{
+ const r=await newAsset('B3 test economic asset','b3-asset-'+suffix())
+ assert.equal(r.statusCode,201,r.body)
+ b3Asset=r.json().id
+ const draft=await econ('/valuations',{effectiveOn:'2026-10-30',amount:'1400',method:'MANUAL_ESTIMATE',confidence:'LOW',sourceLabel:'User'})
+ assert.equal(draft.statusCode,409)
+ const snap=await inject('GET',econBase()+'/economics')
+ assert.equal(snap.statusCode,200)
+ assert.equal(snap.json().valueSource,'UNVERIFIED_REGISTRY_ENTRY')
+ assert.equal(snap.json().originalCostBasis,null)
+ assert.equal(snap.json().financing.facilityCount,0)
+ assert.equal((await lifecycleCommand('/lifecycle-actions',{action:'START_ACQUISITION',reason:'B3 test setup'},{id:b3Asset})).statusCode,200)
+ const acquired=await lifecycleCommand('/acquisitions',{method:'PURCHASE',effectiveOn:'2026-10-29',
+  costs:{purchase:'950.00',fees:'50.00'}},{id:b3Asset})
+ assert.equal(acquired.statusCode,201,acquired.body)
+ assert.equal(acquired.json().asset.lifecycle,'ACQUIRED')
+ assert.equal(acquired.json().acquisition.costBasis,'1000.00')
+})
+test('B3 enforces signed identity, viewer restrictions, tenant isolation, ETags and strict authority inputs',async()=>{
+ const payload={effectiveOn:'2026-10-30',amount:'1450.25',method:'MANUAL_ESTIMATE',
+  confidence:'LOW',sourceLabel:'User-supplied comparative estimate'}
+ assert.equal((await econ('/valuations',payload,{token:viewerToken})).statusCode,403)
+ assert.equal((await econ('/valuations',payload,{token:bToken,tenant:tenantB,version:'"3"'})).statusCode,404)
+ assert.equal((await inject('GET',econBase()+'/economics',{token:bToken,tenant:tenantB})).statusCode,404)
+ assert.equal((await inject('GET',econBase()+'/valuations',{token:bToken,tenant:tenantB})).statusCode,404)
+ assert.equal((await inject('POST',econBase()+'/valuations',{headers:{'idempotency-key':'b3-no-match-'+suffix()},payload})).statusCode,428)
+ assert.equal((await inject('POST',econBase()+'/valuations',{headers:{'if-match':'"3"'},payload})).statusCode,428)
+ assert.equal((await econ('/valuations',{...payload,status:'ACCEPTED'})).statusCode,400)
+ assert.equal((await econ('/cash-flows',{kind:'INCOME',category:'Rent',amount:'10.00',occurredOn:'2026-10-30',sourceAuthority:'FINANCE_OS_PROJECTION'})).statusCode,400)
+ assert.equal((await econ('/valuations',{...payload,effectiveOn:'2026-10-28'})).statusCode,422)
+ assert.equal((await econ('/valuations',{...payload,effectiveOn:'2099-01-01'})).statusCode,422)
+})
+test('B3 creates immutable draft, internal acceptance, accepted supersession and cursor history',async()=>{
+ const draftInput={effectiveOn:'2026-10-30',amount:'1450.25',
+  method:'MANUAL_ESTIMATE',confidence:'LOW',sourceLabel:'Unverified owner opinion'}
+ const key='b3-value-'+suffix(),v=(await inject('GET',econBase())).headers.etag
+ const draft=await econ('/valuations',draftInput,{key,version:v})
+ assert.equal(draft.statusCode,201,draft.body)
+ assert.equal(draft.json().valuation.status,'DRAFT')
+ b3Accepted1=draft.json().valuation.id
+ const replay=await econ('/valuations',draftInput,{key,version:v})
+ assert.equal(replay.statusCode,201)
+ assert.equal(replay.headers['idempotent-replayed'],'true')
+ assert.equal(replay.json().valuation.id,b3Accepted1)
+ assert.equal((await econ('/valuations',{...draftInput,amount:'1499.99'},{key,version:v})).statusCode,409)
+ const accept=await econ('/valuations/'+b3Accepted1+'/accept',
+  {note:'Reviewed internal estimate',confirm:'ACCEPT_VALUATION'})
+ assert.equal(accept.statusCode,200,accept.body)
+ assert.equal(accept.json().valuation.status,'ACCEPTED')
+ assert.equal(accept.json().valuation.sourceAuthority,'USER_REVIEWED_NOT_EXTERNALLY_VERIFIED')
+ const repeated=await econ('/valuations/'+b3Accepted1+'/accept',
+  {note:'Try acceptance twice',confirm:'ACCEPT_VALUATION'})
+ assert.equal(repeated.statusCode,409)
+ const older=await econ('/valuations',{...draftInput,effectiveOn:'2026-10-29',amount:'1300.00'})
+ assert.equal(older.statusCode,201)
+ const olderAttempt=await econ('/valuations/'+older.json().valuation.id+'/accept',
+  {note:'Earlier valuation',confirm:'ACCEPT_VALUATION'})
+ assert.equal(olderAttempt.statusCode,409)
+ assert.equal(olderAttempt.json().error.code,'VALUATION_DATE_REGRESSION')
+ const newest=await econ('/valuations',{...draftInput,effectiveOn:'2026-10-31',amount:'1600.00'})
+ assert.equal(newest.statusCode,201,newest.body)
+ b3Accepted2=newest.json().valuation.id
+ const promoted=await econ('/valuations/'+b3Accepted2+'/accept',
+  {note:'Newer valuation reviewed',confirm:'ACCEPT_VALUATION'})
+ assert.equal(promoted.statusCode,200,promoted.body)
+ assert.equal(promoted.json().valuation.supersedesId,b3Accepted1)
+ const history=await inject('GET',econBase()+'/valuations?limit=2')
+ assert.equal(history.statusCode,200,history.body)
+ assert.equal(history.json().items.length,2)
+ assert.ok(history.json().nextCursor)
+ const page2=await inject('GET',econBase()+'/valuations?limit=2&cursor='+encodeURIComponent(history.json().nextCursor))
+ assert.equal(page2.statusCode,200,page2.body)
+ assert.equal(page2.json().items.length,1)
+ assert.equal((await inject('GET',econBase()+'/valuations?cursor=not-a-cursor')).statusCode,400)
+ assert.equal((await inject('GET',econBase()+'/valuations?limit=101')).statusCode,400)
+ const status=await db(tenantA,async c=>(await c.query(
+  'SELECT status,accepted_at FROM asset_os.valuations WHERE tenant_id=$1 AND id=ANY($2::uuid[]) ORDER BY id',
+  [tenantA,[b3Accepted1,b3Accepted2]])).rows)
+ assert.deepEqual(status.map(r=>r.status).sort(),['ACCEPTED','SUPERSEDED'])
+ assert.ok(status.every(r=>r.accepted_at))
+ const agg=await inject('GET',econBase()+'/economics')
+ assert.equal(agg.json().valueSource,'ACCEPTED_INTERNAL_VALUATION')
+ assert.equal(agg.json().selectedValue,'1600.00')
+ assert.equal(agg.json().originalCostBasis,'1000.00')
+ assert.equal(agg.json().indicativeValueChange,'600.00')
+ assert.equal(agg.json().indicativeChangePercent,'60.00')
+})
+test('B3 facility and immutable balance history never fake debt when balance is missing',async()=>{
+ const facility=await econ('/financing',{financierLabel:'Unverified lender',originalPrincipal:'10000.00',
+  interestRatePct:'7.5000',startedOn:'2026-10-30',maturesOn:null,
+  frequency:'MONTHLY',reference:'fixture-loan-no-bank-access'})
+ assert.equal(facility.statusCode,201,facility.body)
+ b3Facility=facility.json().facility.id
+ const missing=await inject('GET',econBase()+'/economics')
+ assert.equal(missing.statusCode,200)
+ assert.equal(missing.json().financing.missingBalanceCount,1)
+ assert.equal(missing.json().financing.debtBalance,null)
+ assert.equal(missing.json().indicativeEquity,null)
+ const tooEarly=await econ('/financing/'+b3Facility+'/balances',
+  {observedOn:'2026-10-29',outstanding:'900.00',sourceLabel:'User'})
+ assert.equal(tooEarly.statusCode,422)
+ const first=await econ('/financing/'+b3Facility+'/balances',
+  {observedOn:'2026-10-30',outstanding:'1200.00',sourceLabel:'User-entered statement'})
+ assert.equal(first.statusCode,201,first.body)
+ const second=await econ('/financing/'+b3Facility+'/balances',
+  {observedOn:'2026-10-31',outstanding:'300.00',sourceLabel:'Owner estimate'})
+ assert.equal(second.statusCode,201)
+ const backdate=await econ('/financing/'+b3Facility+'/balances',
+  {observedOn:'2026-10-30',outstanding:'250.00',sourceLabel:'Should reject'})
+ assert.equal(backdate.statusCode,409)
+ assert.equal(backdate.json().error.code,'BALANCE_OBSERVATION_OUT_OF_ORDER')
+ const balances=await inject('GET',econBase()+'/financing/'+b3Facility+'/balances?limit=1')
+ assert.equal(balances.statusCode,200)
+ assert.equal(balances.json().items.length,1)
+ assert.equal(balances.json().items[0].outstanding,'300.00')
+ assert.ok(balances.json().nextCursor)
+ const page2=await inject('GET',econBase()+'/financing/'+b3Facility+'/balances?limit=1&cursor='+encodeURIComponent(balances.json().nextCursor))
+ assert.equal(page2.statusCode,200)
+ assert.equal(page2.json().items[0].outstanding,'1200.00')
+ const fin=await inject('GET',econBase()+'/financing')
+ assert.equal(fin.statusCode,200)
+ assert.equal(fin.json().items.length,1)
+ assert.equal(fin.json().items[0].latestOutstanding,'300.00')
+ const agg=await inject('GET',econBase()+'/economics')
+ assert.equal(agg.json().financing.debtBalance,'300.00')
+ assert.equal(agg.json().indicativeEquity,'1300.00')
+ const foreign=await inject('GET',econBase()+'/financing/'+b3Facility+'/balances',{token:bToken,tenant:tenantB})
+ assert.equal(foreign.statusCode,404)
+})
+test('B3 cash flow totals separate operations from financing; external source authority cannot be forged',async()=>{
+ const send=(kind,amount,key)=>econ('/cash-flows',{kind,category:'fixture '+kind,amount,
+  occurredOn:'2026-10-31',counterpartyLabel:'User-entered'},key?{key}:{})
+ const income=await send('INCOME','100.00')
+ assert.equal(income.statusCode,201,income.body)
+ b3Flow=income.json().observation.id
+ assert.equal(income.json().observation.financePosted,false)
+ assert.equal((await send('EXPENSE','50.25')).statusCode,201)
+ assert.equal((await send('CAPEX','25.00')).statusCode,201)
+ assert.equal((await send('FINANCING_INFLOW','500.00')).statusCode,201)
+ assert.equal((await send('INCOME','0.00')).statusCode,422)
+ const all=await inject('GET',econBase()+'/cash-flows?limit=2')
+ assert.equal(all.statusCode,200)
+ assert.equal(all.json().items.length,2)
+ assert.ok(all.json().nextCursor)
+ assert.ok(all.json().items.every(x=>x.sourceAuthority==='USER_ENTRY'))
+ const summary=await inject('GET',econBase()+'/economics')
+ assert.equal(summary.statusCode,200)
+ assert.equal(summary.json().observedCashFlow.operatingNet,'24.75')
+ assert.equal(summary.json().observedCashFlow.totals.FINANCING_INFLOW,'500.00')
+ assert.equal(summary.json().observedCashFlow.includesFinancingInNet,false)
+ assert.equal(summary.json().observedCashFlow.sourceAuthority,'USER_ENTRIES_NOT_FINANCE_OS')
+ const invalid=await econ('/cash-flows',{kind:'INCOME',category:'Fraudulent bank sync',amount:'200.00',
+  occurredOn:'2026-10-31',sourceEventId:'fake-bank-event',sourceAuthority:'FINANCE_OS_PROJECTION'})
+ assert.equal(invalid.statusCode,400)
+ const persisted=await db(tenantA,async c=>(await c.query(
+  "SELECT DISTINCT source_authority FROM asset_os.cash_flow_observations WHERE tenant_id=$1 AND asset_id=$2",
+  [tenantA,b3Asset])).rows)
+ assert.deepEqual(persisted.map(r=>r.source_authority),['USER_ENTRY'])
+})
+test('B3 reconciliation references are clearly unverified and bounded to tenant flow',async()=>{
+ const body={flowId:b3Flow,system:'FINANCE_OS',externalReference:'unverified-evidence-ref',note:'No provider connected'}
+ const ref=await econ('/reconciliation-references',body)
+ assert.equal(ref.statusCode,201,ref.body)
+ assert.equal(ref.json().reference.verified,false)
+ assert.equal(ref.json().reference.ledgerPosted,false)
+ assert.equal((await econ('/reconciliation-references',body)).statusCode,409)
+ const list=await inject('GET',econBase()+'/reconciliation-references')
+ assert.equal(list.statusCode,200)
+ assert.equal(list.json().items.length,1)
+ assert.equal(list.json().items[0].verified,false)
+ const fake=await econ('/reconciliation-references',{...body,flowId:randomUUID()})
+ assert.equal(fake.statusCode,404)
+ const wrongTenant=await econ('/reconciliation-references',body,{token:bToken,tenant:tenantB,version:'"3"'})
+ assert.equal(wrongTenant.statusCode,404)
+})
+test('B3 concurrent idempotency, stale ETags, and economic history are atomic and immutable',async()=>{
+ const key='b3-race-'+suffix()
+ const payload={kind:'EXPENSE',category:'racing',amount:'6.25',occurredOn:'2026-10-30'}
+ const version=(await inject('GET',econBase())).headers.etag
+ const [x,y]=await Promise.all([
+  econ('/cash-flows',payload,{key,version}),
+  econ('/cash-flows',payload,{key,version})
+ ])
+ assert.equal(x.statusCode,201,x.body)
+ assert.equal(y.statusCode,201,y.body)
+ assert.equal(x.json().observation.id,y.json().observation.id)
+ assert.equal([x.headers['idempotent-replayed'],y.headers['idempotent-replayed']].filter(Boolean).length,1)
+ assert.equal((await econ('/cash-flows',payload,{version})).statusCode,412)
+ assert.equal((await econ('/cash-flows',{...payload,amount:'8.00'},{key,version})).statusCode,409)
+ const count=await db(tenantA,async c=>(await c.query('SELECT COUNT(*)::integer AS n FROM asset_os.cash_flow_observations WHERE id=$1',
+  [x.json().observation.id])).rows[0].n)
+ assert.equal(count,1)
+ const events=await db(tenantA,async c=>(await c.query(
+  'SELECT type,delivery_state,payload FROM asset_os.outbox_events WHERE aggregate_id=$1',
+  [b3Asset])).rows)
+ assert.ok(events.some(v=>v.type==='asset.valuation.accepted.v1'))
+ assert.ok(events.some(v=>v.type==='asset.financing.balance.observed.v1'))
+ assert.ok(events.some(v=>v.type==='asset.cashflow.observed.v1'))
+ assert.ok(events.every(v=>v.delivery_state==='PENDING'))
+ assert.ok(events.every(v=>Object.keys(v.payload).every(k=>['assetId','recordVersion','recordId'].includes(k))))
+ const audit=await db(tenantA,async c=>(await c.query(
+  'SELECT event_kind,actor_binding_id FROM asset_os.audit_events WHERE subject_id=$1',
+  [b3Asset])).rows)
+ assert.ok(audit.some(v=>v.event_kind==='VALUATION_ACCEPTED'))
+ assert.ok(audit.some(v=>v.event_kind==='CASH_FLOW_OBSERVATION_RECORDED'))
+ assert.ok(audit.every(v=>v.actor_binding_id===identityA))
+ await assert.rejects(()=>db(tenantA,async c=>c.query(
+  'UPDATE asset_os.cash_flow_observations SET amount=$1 WHERE tenant_id=$2 AND id=$3',
+  ['999999.99',tenantA,b3Flow])),/permission denied/)
+ await assert.rejects(()=>db(tenantA,async c=>c.query(
+  'UPDATE asset_os.valuations SET amount=$1 WHERE tenant_id=$2 AND id=$3',
+  ['999999.99',tenantA,b3Accepted2])),/permission denied/)
+ await assert.rejects(()=>db(tenantB,async c=>c.query(
+  'INSERT INTO asset_os.financing_balances(tenant_id,facility_id,observed_on,outstanding,source_label) VALUES($1,$2,$3,$4,$5)',
+  [tenantB,b3Facility,'2026-10-31','1.00','foreign tenant'])),/foreign key/)
+})
+test('B3 refuses new observations after disposal, preserves read-only economics history',async()=>{
+ const closed=await lifecycleCommand('/disposition',{kind:'WRITE_OFF',effectiveOn:'2026-10-31',
+  proceeds:'0',costs:'0',reason:'B3 certification closing',confirm:'DISPOSE'},{id:b3Asset})
+ assert.equal(closed.statusCode,201,closed.body)
+ const rejected=await econ('/cash-flows',{kind:'EXPENSE',category:'postdisposal',amount:'1.00',occurredOn:'2026-10-31'})
+ assert.equal(rejected.statusCode,409)
+ assert.equal(rejected.json().error.code,'ASSET_NOT_ECONOMICALLY_ACTIVE')
+ const history=await inject('GET',econBase()+'/economics')
+ assert.equal(history.statusCode,200)
+ assert.equal(history.json().lifecycle,'DISPOSED')
+ assert.equal(history.json().indicativeEquity,'1300.00')
+})
