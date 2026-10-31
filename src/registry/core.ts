@@ -125,8 +125,8 @@ export function loadRegistry(storage?: Pick<Storage,'getItem'>): RegistryState {
     const value: unknown = JSON.parse(data)
     if (!value || typeof value !== 'object') return initialRegistry()
     const obj=value as Partial<RegistryState>
-    const storedVersion=(obj as {version?:number}).version
-    if (![1,2,3].includes(storedVersion??0)||!Array.isArray(obj.records)||!obj.records.every(validRecord)||
+    const storedVersion=(obj as {version?:number}).version ?? 0
+    if (![1,2,3].includes(storedVersion)||!Array.isArray(obj.records)||!obj.records.every(validRecord)||
       !Array.isArray(obj.tags)||!obj.tags.every(t=>typeof t==='string')||
       !Array.isArray(obj.categories)||!obj.categories.every(c=>c&&typeof c.name==='string'&&Array.isArray(c.subcategories))||
       !Array.isArray(obj.activity)) return initialRegistry()
