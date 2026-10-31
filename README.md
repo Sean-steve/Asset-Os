@@ -1,6 +1,25 @@
 # Asset OS — Personal Kernel Asset Intelligence
 
-**Status: Phase 6 — Kernel Integration & Administration frontend implemented (60/60 screens).** No production assets, identity, finance records or Kernel services are connected. The five starter assets are synthetic. New edits, acquisition, ownership and disposition records are stored only in your browser. Income/expenses now derive from manually entered browser records; trend lines and alerts remain **demo data**.
+**Status: Phase 7 — Frontend certification complete (60/60 screen experiences).** This is a browser-local prototype, not a production backend. Five starter assets are clearly illustrative; user-entered asset, ownership, finance, operation and portfolio changes persist in local browser storage only. Dashboard valuation history and operational alerts now derive only from recorded data, with honest empty states rather than synthetic activity.
+
+## Phase 7 frontend release certification — 31 October 2026
+
+- **116/116 automated Node domain/regression tests passed**, including v1–v5 storage migration into v6 and financial/authority boundaries.
+- **142/142 Chromium browser tests passed** in desktop and mobile profiles, including 120 screen-navigation checks, hash-route reloads, responsiveness at 390/768/1440 pixels, keyboard navigation and cross-phase workflows.
+- Browser tests run against the actual `/Asset-Os/` production Vite preview. GitHub Actions retains the browser report, test screenshots/video on failure and Playwright traces.
+- Portfolio/category charts include user-created asset categories and exclude unknown financing balances from known-equity totals.
+- See [Phase 7 Certification Report](docs/PHASE_7_CERTIFICATION.md) and the [GitHub Actions checks](https://github.com/Sean-steve/Asset-Os/actions) for traceable evidence.
+
+**Not included:** production identity, server permissions, durable PostgreSQL, authenticated Finance/Wealth/Kernel integrations, real notifications, secure document storage, external AI, cross-browser visual review or a full WCAG audit. These require separate backend and preproduction work.
+
+To run the browser gate locally, first install Chromium dependencies compatible with your OS and then run:
+
+```bash
+npm install
+npx playwright install chromium
+npm run build
+npm run test:e2e
+```
 
 ## Stack
 - React 19 + TypeScript

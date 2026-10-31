@@ -25,14 +25,15 @@ All certification evidence must come from actual GitHub Actions CI and productio
 - Chromium automated checks do not prove exhaustive WCAG compliance or production mobile-device parity.
 - User acceptance and true end-to-end integrations require subsequent secure backend and staging certification.
 
-## Confirmed evidence before final chart fix
+## Release certification evidence — 31 October 2026
 
-- PR: https://github.com/Sean-steve/Asset-Os/pull/8
-- Frontend unit/typecheck/build gate: https://github.com/Sean-steve/Asset-Os/actions/runs/41188529313 — passed.
-- Chromium certification gate: https://github.com/Sean-steve/Asset-Os/actions/runs/41188529315 — **142/142 tests passed**, desktop and mobile.
-- Screen coverage: **60 roadmap entries × 2 Chromium viewport profiles = 120 passing navigation checks**, plus deep-link, keyboard, responsive and cross-workflow checks.
-- First failed run identified an inaccessible maintenance asset selector, corrected in the source and retested successfully.
-- Pending on this report revision: final dynamic-category dashboard fix CI, merge and Pages publication. Those must be verified from their actual runs before closing release.
+- Pull request: https://github.com/Sean-steve/Asset-Os/pull/8 — merged using squash commit `debb7981a6f2de420b6e146378a4ad8565a5c950`.
+- Final unit / TypeScript / build: https://github.com/Sean-steve/Asset-Os/actions/runs/41188730921 — **116/116 tests passed**, production bundle successful.
+- Final Chromium browser certification: https://github.com/Sean-steve/Asset-Os/actions/runs/41188730918 — **142/142 tests passed**.
+- Screen coverage: 60 canonical roadmap entries opened successfully on both desktop and mobile Chromium (120 checks); extra checks validate direct/reloaded links, responsive layouts, keyboard focus, cross-module persistence and guarded local workflows.
+- Earlier blocked browser run identified a missing accessible name on the maintenance asset selector; the control was corrected and the same workflow passed on both desktop and mobile.
+- Final data-quality repair: dashboard history/alerts derive from entered records only, unknown financing balances block asserted equity, and allocation charts dynamically include custom category names.
+- Deployment is performed by the `pages.yml` workflow on `main`; its current result is visible at https://github.com/Sean-steve/Asset-Os/actions. The production URL is https://sean-steve.github.io/Asset-Os/.
 
 ## Release quality statement
 
