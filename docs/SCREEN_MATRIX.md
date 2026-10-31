@@ -1,6 +1,6 @@
 # Asset OS — Screen Implementation Matrix
 
-**Total:** 60 principal product screens. Phase 1 (Screens 01–10) is delivered as a frontend prototype; no backend, production data or Kernel integration is connected.
+**Total:** 60 screens (60 principal product experiences). Phase 1 (Screens 01–10) is delivered as a frontend prototype; no backend, production data or Kernel integration is connected.
 
 | Phase | Screen IDs | Feature area | Current status |
 | --- | --- | --- | --- |
