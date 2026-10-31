@@ -38,6 +38,9 @@ services:
       NODE_ENV: development
       HOST: 0.0.0.0
       PORT: 3001
+      OIDC_ISSUER: ${OIDC_ISSUER:-}
+      OIDC_AUDIENCE: ${OIDC_AUDIENCE:-}
+      OIDC_JWKS_URL: ${OIDC_JWKS_URL:-}
       DATABASE_URL: postgresql://asset_os_app:${ASSET_OS_APP_PASSWORD:?Set ASSET_OS_APP_PASSWORD}@db:5432/asset_os
     ports:
       - "127.0.0.1:${ASSET_OS_API_PORT:-3001}:3001"

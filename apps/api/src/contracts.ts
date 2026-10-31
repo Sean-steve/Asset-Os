@@ -44,7 +44,7 @@ export const ErrorResponse=z.object({error:z.object({
  code:z.string().min(1),message:z.string().min(1),requestId:z.string().min(1)
 }).strict()}).strict()
 export const API_VERSION='1'
-export const CONTRACT_VERSION='2026-10-31.b0'
+export const CONTRACT_VERSION='2026-10-31.b1'
 export const IDENTITY_NOT_CONFIGURED='IDENTITY_NOT_CONFIGURED'
 export const FOUNDATION_ONLY_CAPABILITIES=[
  'health_liveness','health_readiness','openapi_contract','postgresql_migrations',
@@ -58,3 +58,25 @@ export function identityNotConfigured(requestId:string){
   requestId
  }})
 }
+
+
+// B1 write input: only explicitly allowlisted registry fields.
+export const PatchAssetRequest=z.object({
+  name:z.string().trim().min(1).max(160).optional(),
+  description:z.string().max(1200).optional(),
+  category:z.string().trim().min(1).max(120).optional(),
+  subcategory:z.string().max(120).optional(),
+  registryValue:DecimalMoney.nullable().optional(),
+  valueAsOf:IsoDate.nullable().optional(),
+  locationLabel:z.string().max(160).optional(),
+  customFields:z.record(z.string().max(100),z.string().max(300)).optional(),
+  tags:z.array(z.string().trim().min(1).max(80)).max(40).optional()
+}).strict().refine(value=>Object.keys(value).length>0,{message:'At least one asset field is required'})
+export type PatchAssetDto=z.infer<typeof PatchAssetRequest>
+export const IfMatchVersion=z.string().regex(/^"[1-9]\d{0,8}"$/)
+export const B1_CAPABILITIES=[
+  ...FOUNDATION_ONLY_CAPABILITIES,
+  'oidc_rs256_jwks_verification','tenant_membership_authorization',
+  'asset_registry_create_read_update','idempotent_registry_commands',
+  'optimistic_asset_versioning','transactional_registry_audit_outbox'
+] as const

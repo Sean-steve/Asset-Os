@@ -2,9 +2,9 @@
   "openapi": "3.1.0",
   "info": {
     "title": "Asset OS — Backend API Contracts",
-    "version": "0.1.0-b0",
-    "summary": "Contracts, NOT available backend CRUD",
-    "description": "Phase B0 implements only health/live, health/ready, v1/meta and v1/openapi.json. ALL authenticated domain routes fail closed until trusted Personal Kernel identity, tenant policy and domain services are deployed. Asset OS does not own Finance OS ledger truth."
+    "version": "0.2.0-b1",
+    "summary": "B1 live OIDC-backed Asset Registry; remaining domain endpoints are planned",
+    "description": "B1 implements health/meta/OpenAPI, verified RS256/JWKS OIDC access tokens, PostgreSQL active tenant memberships and asset create/list/get/patch. Tenant ID headers are selection hints ONLY. All non-registry domain routes remain 503 until later phases. The static GitHub Pages frontend is NOT connected."
   },
   "servers": [
     {
@@ -162,21 +162,62 @@
         "summary": "Trusted current actor context",
         "operationId": "GET_identity_trusted_current_actor_context",
         "x-implementation-phase": "B1",
-        "x-runtime-status": "NOT_IMPLEMENTED_IN_B0",
+        "x-runtime-status": "IMPLEMENTED_B1",
         "x-domain-authority": "PERSONAL_KERNEL",
         "security": [
           {
             "KernelBearer": []
           }
         ],
-        "parameters": [],
+        "parameters": [
+          {
+            "name": "X-Tenant-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Untrusted tenant SELECTION hint. The API verifies OIDC JWT and checks an active verified binding+membership inside FORCE RLS before executing any query."
+          }
+        ],
         "responses": {
           "200": {
             "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Meta"
+                  "$ref": "#/components/schemas/Membership"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request, query, cursor or tenant selection",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No token or invalid signed JWT",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Inactive/unbound tenant, or insufficient member role",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
                 }
               }
             }
@@ -202,7 +243,7 @@
         "summary": "List tenant assets",
         "operationId": "GET_registry_list_tenant_assets",
         "x-implementation-phase": "B1",
-        "x-runtime-status": "NOT_IMPLEMENTED_IN_B0",
+        "x-runtime-status": "IMPLEMENTED_B1",
         "x-domain-authority": "ASSET_OS",
         "security": [
           {
@@ -229,6 +270,16 @@
               "type": "string",
               "maxLength": 512
             }
+          },
+          {
+            "name": "X-Tenant-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Untrusted tenant SELECTION hint. The API verifies OIDC JWT and checks an active verified binding+membership inside FORCE RLS before executing any query."
           }
         ],
         "responses": {
@@ -238,6 +289,36 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/PaginatedAssets"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request, query, cursor or tenant selection",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No token or invalid signed JWT",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Inactive/unbound tenant, or insufficient member role",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
                 }
               }
             }
@@ -261,7 +342,7 @@
         "summary": "Create planned asset",
         "operationId": "POST_registry_create_planned_asset",
         "x-implementation-phase": "B1",
-        "x-runtime-status": "NOT_IMPLEMENTED_IN_B0",
+        "x-runtime-status": "IMPLEMENTED_B1",
         "x-domain-authority": "ASSET_OS",
         "security": [
           {
@@ -279,6 +360,16 @@
               "maxLength": 128
             },
             "description": "Stable per-tenant key; server enforces request hash and exactly-once command semantics when implemented."
+          },
+          {
+            "name": "X-Tenant-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Untrusted tenant SELECTION hint. The API verifies OIDC JWT and checks an active verified binding+membership inside FORCE RLS before executing any query."
           }
         ],
         "requestBody": {
@@ -298,6 +389,69 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/Asset"
+                }
+              }
+            },
+            "headers": {
+              "ETag": {
+                "description": "New asset strong record version",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Idempotent-Replayed": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request, query, cursor or tenant selection",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No token or invalid signed JWT",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Inactive/unbound tenant, or insufficient member role",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Idempotency replay hash conflict / domain state conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "428": {
+            "description": "Missing Idempotency-Key or If-Match required on PATCH",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
                 }
               }
             }
@@ -323,7 +477,7 @@
         "summary": "Get tenant asset",
         "operationId": "GET_registry_get_tenant_asset",
         "x-implementation-phase": "B1",
-        "x-runtime-status": "NOT_IMPLEMENTED_IN_B0",
+        "x-runtime-status": "IMPLEMENTED_B1",
         "x-domain-authority": "ASSET_OS",
         "security": [
           {
@@ -339,6 +493,16 @@
               "type": "string",
               "format": "uuid"
             }
+          },
+          {
+            "name": "X-Tenant-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Untrusted tenant SELECTION hint. The API verifies OIDC JWT and checks an active verified binding+membership inside FORCE RLS before executing any query."
           }
         ],
         "responses": {
@@ -348,6 +512,44 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/Asset"
+                }
+              }
+            },
+            "headers": {
+              "ETag": {
+                "description": "Current strong numeric record version",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request, query, cursor or tenant selection",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No token or invalid signed JWT",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Inactive/unbound tenant, or insufficient member role",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
                 }
               }
             }
@@ -371,7 +573,7 @@
         "summary": "Update asset with optimistic version",
         "operationId": "PATCH_registry_update_asset_with_optimistic_version",
         "x-implementation-phase": "B1",
-        "x-runtime-status": "NOT_IMPLEMENTED_IN_B0",
+        "x-runtime-status": "IMPLEMENTED_B1",
         "x-domain-authority": "ASSET_OS",
         "security": [
           {
@@ -398,6 +600,26 @@
               "maxLength": 128
             },
             "description": "Stable per-tenant key; server enforces request hash and exactly-once command semantics when implemented."
+          },
+          {
+            "name": "X-Tenant-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Untrusted tenant SELECTION hint. The API verifies OIDC JWT and checks an active verified binding+membership inside FORCE RLS before executing any query."
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^\\\"[1-9][0-9]{0,8}\\\"$"
+            },
+            "description": "Strong ETag from GET /v1/assets/{assetId}, e.g. quote-1-quote; stale versions return 412."
           }
         ],
         "requestBody": {
@@ -405,7 +627,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/CreateAsset"
+                "$ref": "#/components/schemas/PatchAsset"
               }
             }
           }
@@ -417,6 +639,79 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/Asset"
+                }
+              }
+            },
+            "headers": {
+              "ETag": {
+                "description": "Updated strong record version",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Idempotent-Replayed": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request, query, cursor or tenant selection",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "No token or invalid signed JWT",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Inactive/unbound tenant, or insufficient member role",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Idempotency replay hash conflict / domain state conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "412": {
+            "description": "Asset record changed since If-Match",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "428": {
+            "description": "Missing Idempotency-Key or If-Match required on PATCH",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
                 }
               }
             }
@@ -1422,6 +1717,27 @@
           "updatedAt": {
             "type": "string",
             "format": "date-time"
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "operationalState": {
+            "type": "string"
+          },
+          "riskLabel": {
+            "type": "string"
+          },
+          "locationLabel": {
+            "type": "string"
+          },
+          "customFields": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
           }
         }
       },
@@ -1477,7 +1793,8 @@
               {
                 "type": "null"
               }
-            ]
+            ],
+            "description": "Required when registryValue is non-null"
           },
           "locationLabel": {
             "type": "string",
@@ -1491,6 +1808,13 @@
               "maxLength": 80
             },
             "maxItems": 40
+          },
+          "customFields": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string",
+              "maxLength": 300
+            }
           }
         }
       },
@@ -2097,6 +2421,112 @@
           },
           "cursor": {
             "type": "string"
+          }
+        }
+      },
+      "PatchAsset": {
+        "type": "object",
+        "additionalProperties": false,
+        "minProperties": 1,
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 1200
+          },
+          "category": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 120
+          },
+          "subcategory": {
+            "type": "string",
+            "maxLength": 120
+          },
+          "registryValue": {
+            "oneOf": [
+              {
+                "type": "string",
+                "pattern": "^(0|[1-9][0-9]{0,17})(\\.[0-9]{1,2})?$",
+                "description": "Exact decimal string, never JavaScript floating point or inferred exchange conversion."
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "valueAsOf": {
+            "oneOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Required when registryValue is non-null"
+          },
+          "locationLabel": {
+            "type": "string",
+            "maxLength": 160
+          },
+          "customFields": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string",
+              "maxLength": 300
+            }
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 80
+            },
+            "maxItems": 40
+          }
+        }
+      },
+      "Membership": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "tenantId",
+          "identityId",
+          "role",
+          "issuer",
+          "authenticated"
+        ],
+        "properties": {
+          "tenantId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "identityId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "WORKSPACE_OWNER",
+              "OPERATIONS",
+              "PORTFOLIO_ANALYST",
+              "VIEWER"
+            ]
+          },
+          "issuer": {
+            "type": "string",
+            "format": "uri"
+          },
+          "authenticated": {
+            "type": "boolean"
           }
         }
       }
