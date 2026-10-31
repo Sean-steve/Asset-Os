@@ -30,10 +30,9 @@ export const activity = [
   {title:'Asset acquired',detail:'Business Equipment',when:'3 days ago',tone:'purple'},
 ]
 export const allocation = [
-  { label:'Real Estate', pct:42, color:'#478ffa'},
-  { label:'Vehicles', pct:18, color:'#45cba4'},
-  { label:'Investments', pct:16, color:'#f0bf63'},
-  { label:'Business', pct:10, color:'#f58c63'},
-  { label:'Digital Assets', pct:8, color:'#a384f5'},
-  { label:'Other', pct:6, color:'#95a9c9'},
+  { label:'Real Estate', pct:49, color:'#478ffa'},
+  { label:'Vehicles', pct:14, color:'#45cba4'},
+  { label:'Investments', pct:20, color:'#f0bf63'},
+  { label:'Business', pct:7, color:'#f58c63'},
+  { label:'Digital Assets', pct:10, color:'#a384f5'},
 ]

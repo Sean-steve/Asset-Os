@@ -119,19 +119,19 @@ function TrendChart({period,changePeriod}: {period:Period;changePeriod:(p:Period
 
 function AllocationChart({onView}: {onView:()=>void}) {
   return <Surface title="Asset allocation" className="allocation-surface" action={<button type="button" className="link-button" onClick={onView}>View all <ArrowRight size={15}/></button>}>
-    <div className="allocation-inner"><div className="donut" role="img" aria-label="Asset allocation: real estate 42%, vehicles 18%, investments 16%, business 10%, digital assets 8%, other 6%"><div><strong>24.85M</strong><span>Total value · KES</span></div></div>
+    <div className="allocation-inner"><div className="donut" role="img" aria-label="Asset allocation: real estate 49%, vehicles 14%, investments 20%, business 7%, digital assets 10%"><div><strong>24.85M</strong><span>Total value · KES</span></div></div>
     <div className="allocation-legend">{allocation.map(item=><div key={item.label}><span className="legend-name"><i style={{background:item.color}}/>{item.label}</span><strong>{item.pct}%</strong></div>)}</div></div>
   </Surface>
 }
 
 function Performance({onView}: {onView:()=>void}) {
   const [metric,setMetric]=useState<'Value'|'Equity'>('Value')
-  const series=metric==='Value'?[40,18,16,10,8,6]:[44,15,25,9,4,3]
+  const series=metric==='Value'?[49,14,20,7,10]:[47,15,28,9,1]
   const colors=allocation.map(a=>a.color)
   return <Surface title="Performance overview" className="performance-surface" action={<button type="button" className="link-button" onClick={onView}>View all <ArrowRight size={15}/></button>}>
     <div className="metric-switch"><button type="button" className={metric==='Value'?'active':''} aria-pressed={metric==='Value'} onClick={()=>setMetric('Value')}>Value</button><button type="button" className={metric==='Equity'?'active':''} aria-pressed={metric==='Equity'} onClick={()=>setMetric('Equity')}>Equity</button><span>Category contribution (%)</span></div>
     <div className="bars" aria-label={'Illustrative '+metric.toLowerCase()+' breakdown by category'}>
-      {series.map((value,i)=><div className="bar-cell" key={allocation[i].label}><div className="bar-plot"><div style={{height:(value/50*100)+'%',background:colors[i]}} title={allocation[i].label+': '+value+'%'} /></div><small>{['Real estate','Vehicles','Invest.','Business','Digital','Other'][i]}</small></div>)}
+      {series.map((value,i)=><div className="bar-cell" key={allocation[i].label}><div className="bar-plot"><div style={{height:(value/50*100)+'%',background:colors[i]}} title={allocation[i].label+': '+value+'%'} /></div><small>{['Real estate','Vehicles','Invest.','Business','Digital'][i]}</small></div>)}
     </div>
     <div className="perform-divider" />
     <h3 className="mini-heading">Top performing assets</h3>

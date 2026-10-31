@@ -136,7 +136,7 @@ a { color: inherit; text-decoration: none; }
 .note-dot { width:7px; height:7px; border-radius:50%; background:#3294ff; }
 .allocation-surface { min-height:307px; }
 .allocation-inner { display:flex; align-items:center; gap:13px; padding:19px 15px; justify-content:center; }
-.donut { height:153px; width:153px; flex-shrink:0; border-radius:50%; background:conic-gradient(#478ffa 0% 42%,#45cba4 42% 60%,#f0bf63 60% 76%,#f58c63 76% 86%,#a384f5 86% 94%,#95a9c9 94% 100%); display:grid; place-items:center; }
+.donut { height:153px; width:153px; flex-shrink:0; border-radius:50%; background:conic-gradient(#478ffa 0% 49%,#45cba4 49% 63%,#f0bf63 63% 83%,#f58c63 83% 90%,#a384f5 90% 100%); display:grid; place-items:center; }
 .donut>div { height:109px; width:109px; border-radius:50%; background:var(--panel); display:flex; flex-direction:column; align-items:center; justify-content:center; }
 .donut strong { font-size:20px; letter-spacing:-.8px; }
 .donut span { font-size:10px; color:var(--muted); }
