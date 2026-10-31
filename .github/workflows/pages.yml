@@ -25,6 +25,25 @@ jobs:
         run: npm install --no-audit --no-fund
       - name: Foundation tests
         run: npm run test
+      - name: Generate public OIDC/API client configuration
+        env:
+          ASSET_API_BASE_URL: ${{ vars.ASSET_API_BASE_URL }}
+          ASSET_OIDC_ISSUER: ${{ vars.ASSET_OIDC_ISSUER }}
+          ASSET_OIDC_AUTHORIZATION_ENDPOINT: ${{ vars.ASSET_OIDC_AUTHORIZATION_ENDPOINT }}
+          ASSET_OIDC_TOKEN_ENDPOINT: ${{ vars.ASSET_OIDC_TOKEN_ENDPOINT }}
+          ASSET_OIDC_CLIENT_ID: ${{ vars.ASSET_OIDC_CLIENT_ID }}
+          ASSET_OIDC_AUDIENCE: ${{ vars.ASSET_OIDC_AUDIENCE }}
+        run: |
+          node - <<'NODE'
+          const fs = require('node:fs')
+          const v = process.env
+          fs.writeFileSync('public/asset-runtime.json', JSON.stringify({
+            apiBaseUrl:v.ASSET_API_BASE_URL||'',issuer:v.ASSET_OIDC_ISSUER||'',
+            authorizationEndpoint:v.ASSET_OIDC_AUTHORIZATION_ENDPOINT||'',
+            tokenEndpoint:v.ASSET_OIDC_TOKEN_ENDPOINT||'',clientId:v.ASSET_OIDC_CLIENT_ID||'',
+            audience:v.ASSET_OIDC_AUDIENCE||''
+          },null,2))
+          NODE
       - name: Build with Vite
         run: npm run build
       - uses: actions/configure-pages@v5

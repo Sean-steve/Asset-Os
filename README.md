@@ -2,6 +2,12 @@
 
 **Frontend: Phase 7 certified — 60/60 screen experiences. Backend: Phase B1 verified OIDC/tenant membership and PostgreSQL Asset Registry API implemented (provider credentials not configured).** This is a browser-local prototype, not a production backend. Five starter assets are clearly illustrative; user-entered asset, ownership, finance, operation and portfolio changes persist in local browser storage only. Dashboard valuation history and operational alerts now derive only from recorded data, with honest empty states rather than synthetic activity.
 
+## Phase B1.1 — Secure Registry Frontend Integration (provider activation pending)
+
+The application now has a **separate protected Server Registry** at `#/server-registry` for public-client OIDC Authorization Code + PKCE sign-in, tenant membership verification and PostgreSQL-backed asset list/create/detail/edit. Access tokens remain in memory. All other 60 frontend screens are **browser-local previews**, not synchronized server records. With no real identity provider and API configured, the server registry correctly displays **not activated**.
+
+Deployment reads public configuration from GitHub Pages variables; **no OIDC secret or access token belongs in repository variables or client files**. The backend has an exact-origin CORS allowlist. [B1.1 activation guide](docs/BACKEND_B1_1.md) provides configuration and live staging certification requirements.
+
 ## Phase B1 — Trusted Identity & PostgreSQL Asset Registry
 
 Backend B1 implements an **OIDC/JWKS RS256-verifying** identity boundary and tenant role authorization in the same PostgreSQL transaction as registry commands. It includes a privileged, signed-access-token-based first-owner bootstrap; `GET /v1/me`; `GET/POST /v1/assets`; `GET/PATCH /v1/assets/:id`; immutable asset ID/currency/lifecycle from client edits; strong ETag concurrency; 24-hour idempotency keys; minimum-necessary audit and atomic outbox events. All future domain routes remain blocked.

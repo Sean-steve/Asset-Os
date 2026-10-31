@@ -1,0 +1,8 @@
+{
+  "apiBaseUrl": "",
+  "issuer": "",
+  "authorizationEndpoint": "",
+  "tokenEndpoint": "",
+  "clientId": "",
+  "audience": ""
+}
