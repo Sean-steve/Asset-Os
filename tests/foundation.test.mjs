@@ -16,7 +16,7 @@ test('project has a strictly enumerated 60-screen roadmap',()=>{
 })
 
 test('public prototype explicitly labels sample financial information',()=>{
-  assert.match(read('src/App.tsx'),/DEMO DATA/)
+  assert.match(read('src/App.tsx'),/BROWSER DATA/)
   assert.match(read('src/demo.ts'),/Illustrative records only/)
 })
 

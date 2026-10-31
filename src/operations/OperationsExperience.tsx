@@ -49,7 +49,7 @@ function Badge({value,accent='neutral'}:{value:string;accent?:'neutral'|'green'|
 }
 function ErrorBox({error}:{error:string}){return error?<div className="p4-error" role="alert"><AlertTriangle size={17}/>{error}</div>:null}
 function AssetSelect({store,value,onChange,includeInactive=false}:{store:RegistryState;value:string;onChange:(s:string)=>void;includeInactive?:boolean}){
- return <label className="p4-field">Asset<select required value={value} onChange={e=>onChange(e.target.value)}><option value="">Select asset...</option>{store.records.filter(a=>includeInactive||live(a)).map(a=><option key={a.id} value={a.id}>{a.number} · {a.name}</option>)}</select></label>
+ return <label className="p4-field">Asset<select aria-label="Asset" required value={value} onChange={e=>onChange(e.target.value)}><option value="">Select asset...</option>{store.records.filter(a=>includeInactive||live(a)).map(a=><option key={a.id} value={a.id}>{a.number} · {a.name}</option>)}</select></label>
 }
 function Info({label,value}:{label:string;value:string}){
  return <div className="p4-info"><small>{label}</small><strong>{value}</strong></div>

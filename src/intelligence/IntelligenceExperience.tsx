@@ -46,7 +46,7 @@ function LinkAction({title,description,icon:Icon,onClick}:{title:string;descript
  return <button type="button" className="p5-link-action" onClick={onClick}><span className="p5-glyph"><Icon size={18}/></span><span><strong>{title}</strong><small>{description}</small></span><ArrowRight size={16}/></button>
 }
 function AssetSelect({store,value,onChange}:{store:RegistryState;value:string;onChange:(s:string)=>void}){
- return <label className="p5-field">Asset<select value={value} required onChange={e=>onChange(e.target.value)}><option value="">Select an asset...</option>{store.records.filter(held).map(a=><option key={a.id} value={a.id}>{a.number} · {a.name} ({a.currency})</option>)}</select></label>
+ return <label className="p5-field">Asset<select aria-label="Asset" value={value} required onChange={e=>onChange(e.target.value)}><option value="">Select an asset...</option>{store.records.filter(held).map(a=><option key={a.id} value={a.id}>{a.number} · {a.name} ({a.currency})</option>)}</select></label>
 }
 function Field({label,value}:{label:string;value:string}){return <div className="p5-detail-field"><span>{label}</span><strong>{value}</strong></div>}
 function AssetRow({asset,detail,extra,onClick}:{asset:AssetRecord;detail:string;extra?:ReactNode;onClick:()=>void}){

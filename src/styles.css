@@ -358,3 +358,22 @@ a { color: inherit; text-decoration: none; }
   .metric-switch span { display:none; }
 }
 @media(prefers-reduced-motion:reduce) { *, *::before, *::after { scroll-behavior:auto!important; transition:none!important; animation:none!important; } }
+
+
+/* Phase 7: honest dashboard empty/valuation evidence states */
+.trend-empty{min-height:242px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:11px;text-align:center;padding:23px 18px}
+.trend-empty-icon{display:grid;place-items:center;background:var(--panel-2);border:1px solid var(--line);color:var(--blue-2);width:54px;height:54px;border-radius:14px}
+.trend-empty strong{font-size:13px}
+.trend-empty p{font-size:11px;color:var(--muted);line-height:1.65;max-width:480px;margin:0}
+.trend-series-label{font-size:11px;color:var(--muted);padding:12px 6px 0}
+.dashboard-no-data{font-size:11px;line-height:1.7;color:var(--muted);padding:18px 13px}
+.notice{flex-wrap:wrap}
+.notice>span:nth-child(2){flex:1 1 440px}
+@media(max-width:560px){.notice button{margin-left:0}.trend-note{flex-wrap:wrap}.trend-note strong{margin-left:0}.page-actions{flex-wrap:wrap}}
+
+/* Phase 7 keyboard and reduced-motion safeguards */
+.skip-main{position:fixed;left:14px;top:-90px;z-index:9999;color:#fff;background:#1b71d6;border:2px solid #fff;border-radius:8px;padding:12px 18px;font-size:13px;font-weight:720}
+.skip-main:focus-visible{top:12px}
+:where(button,a,input,select,textarea):focus-visible{outline:3px solid #74bcff;outline-offset:2px}
+.main-content:focus{outline:none}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}
