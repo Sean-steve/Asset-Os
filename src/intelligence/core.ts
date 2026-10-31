@@ -3,9 +3,9 @@
  * No AI model, forecasting service, Wealth OS decision or financial ledger is connected.
  * Historical values are never synthesized and currencies are never converted implicitly.
  */
-import type { RegistryState, AssetRecord, ActivityEntry } from '../registry/core'
-import { indicativeEquity, flowsFor, flowSummary, roiSnapshot, latestAccepted } from '../economics/core'
-import { operationalEvents } from '../operations/core'
+import type { RegistryState, AssetRecord, ActivityEntry } from '../registry/core.ts'
+import { indicativeEquity, flowsFor, flowSummary, roiSnapshot, latestAccepted } from '../economics/core.ts'
+import { operationalEvents } from '../operations/core.ts'
 
 export type Portfolio={id:string;name:string;description:string;currency:string;createdAt:string;archivedAt:string|null}
 export type PortfolioMembership={id:string;portfolioId:string;assetId:string;addedAt:string;removedAt:string|null}
