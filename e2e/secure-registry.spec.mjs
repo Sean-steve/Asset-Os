@@ -212,7 +212,7 @@ test('B2.1 secured lifecycle: acquisition, cost basis and ownership write carry 
  expect(calls.every(v=>v.headers['x-tenant-id']===tenant)).toBe(true)
  expect(calls[1].body.costs.purchase).toBe('1200.25')
  const before=await page.evaluate(()=>localStorage.getItem('asset-os:registry:v1'))
- expect(before).not.toContain('Registered party one')
+ expect(String(before||'')).not.toContain('Registered party one')
 })
 test('B2.1 denied Viewer role hides mutating controls but permits authenticated lifecycle evidence',async({page})=>{
  await setup(page,{membership:{...member,role:'VIEWER'}})
