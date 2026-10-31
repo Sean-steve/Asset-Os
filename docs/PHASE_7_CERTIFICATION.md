@@ -25,6 +25,15 @@ All certification evidence must come from actual GitHub Actions CI and productio
 - Chromium automated checks do not prove exhaustive WCAG compliance or production mobile-device parity.
 - User acceptance and true end-to-end integrations require subsequent secure backend and staging certification.
 
-## Release evidence
+## Confirmed evidence before final chart fix
 
-Populate the certification record from the actual pull request, CI and Pages deployment after checks complete. Never pre-report tests as passed.
+- PR: https://github.com/Sean-steve/Asset-Os/pull/8
+- Frontend unit/typecheck/build gate: https://github.com/Sean-steve/Asset-Os/actions/runs/41188529313 — passed.
+- Chromium certification gate: https://github.com/Sean-steve/Asset-Os/actions/runs/41188529315 — **142/142 tests passed**, desktop and mobile.
+- Screen coverage: **60 roadmap entries × 2 Chromium viewport profiles = 120 passing navigation checks**, plus deep-link, keyboard, responsive and cross-workflow checks.
+- First failed run identified an inaccessible maintenance asset selector, corrected in the source and retested successfully.
+- Pending on this report revision: final dynamic-category dashboard fix CI, merge and Pages publication. Those must be verified from their actual runs before closing release.
+
+## Release quality statement
+
+This verifies a frontend-only localStorage prototype. **60/60 navigation checks do not mean 60 independently implemented URL templates**; some details require parameterized IDs and relevant data. Automated Chromium layout and keyboard smoke checks also do not establish full WCAG accessibility compliance, browser-vendor parity or real external user acceptance.

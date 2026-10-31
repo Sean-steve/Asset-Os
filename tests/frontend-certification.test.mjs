@@ -43,3 +43,10 @@ test('dashboard never converts an unknown financed asset into asserted aggregate
  assert.equal(stored.version,6)
  assert.equal(netWorthPreview(stored,'USD').indicativeNetEquity,0)
 })
+
+test('dashboard allocation includes user-created categories instead of static demo percentages',()=>{
+ assert.match(app,/new Set\(kes\.map\(a=>a\.category\)\)/)
+ assert.match(app,/allocationColors\[i%allocationColors\.length\]/)
+ assert.ok(!app.includes("import { allocation,"))
+ assert.ok(!app.includes('const categories=allocation'))
+})

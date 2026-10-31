@@ -8,7 +8,7 @@ import {
   Moon, Plus, Search, Server, ShieldCheck, Sparkles, Scale, Settings, LockKeyhole, ClipboardList,
   Sun, TrendingUp, Wallet, Wrench, X, type LucideIcon
 } from 'lucide-react'
-import { allocation, type Asset } from './demo'
+import type { Asset } from './demo'
 import { RegistryExperience } from './registry/RegistryExperience'
 import { LifecycleExperience } from './lifecycle/LifecycleExperience'
 import { EconomicsExperience } from './economics/EconomicsExperience'
@@ -80,6 +80,7 @@ const icons: Record<string, LucideIcon> = {
   building: Building2, car: CarFront, chart: BarChart3,
   briefcase: BriefcaseBusiness, server: Server,
 }
+const allocationColors=['#478ffa','#45cba4','#f0bf63','#f58c63','#a384f5','#78aee7']
 const short = (amount: number) => amount >= 1_000_000 ? 'KES ' + (amount / 1_000_000).toFixed(2) + 'M' : amount >= 1_000 ? 'KES ' + (amount / 1_000).toFixed(0) + 'K' : 'KES ' + Intl.NumberFormat('en-KE').format(amount)
 const go = (route: string) => { window.location.hash = '/' + route }
 const currentPath = () => decodeURIComponent(window.location.hash.replace(/^#\/?/, '')) || 'dashboard'
@@ -159,30 +160,35 @@ function TrendChart({store,onView}:{store:RegistryState;onView:()=>void}) {
 function AllocationChart({items,onView}: {items:Asset[];onView:()=>void}) {
   const kes=items.filter(a=>a.currency==='KES'&&['ACQUIRED','ACTIVE','SUSPENDED'].includes(a.lifecycle||''))
   const total=kes.reduce((s,a)=>s+a.value,0)
-  const segments=allocation.map(x=>({...x,value:kes.filter(a=>a.category===x.label).reduce((s,a)=>s+a.value,0)}))
+  // Group by the actual registry categories, including user-created categories.
+  const labels=[...new Set(kes.map(a=>a.category))]
+  const segments=labels.map((label,i)=>({label,color:allocationColors[i%allocationColors.length],value:kes.filter(a=>a.category===label).reduce((s,a)=>s+a.value,0)}))
   const boundaries=segments.reduce((acc,s)=>{const last=acc.length?acc[acc.length-1].end:0;const end=total>0?last+s.value/total*100:0;acc.push({...s,start:last,end});return acc},[] as Array<typeof segments[number]&{start:number;end:number}>)
   const bg=total>0?'conic-gradient('+boundaries.filter(x=>x.value>0).map(x=>x.color+' '+x.start+'% '+x.end+'%').join(',')+')':'var(--panel-2)'
   return <Surface title="Asset allocation" className="allocation-surface" action={<button type="button" className="link-button" onClick={onView}>View allocation <ArrowRight size={15}/></button>}>
-    <div className="allocation-inner"><div className="donut" style={{background:bg}} role="img" aria-label="Current KES asset allocation by category"><div><strong>{total?(total/1_000_000).toFixed(2)+'M':'—'}</strong><span>Tracked value · KES</span></div></div>
-    <div className="allocation-legend">{boundaries.filter(i=>i.value>0).map(item=><div key={item.label}><span className="legend-name"><i style={{background:item.color}}/>{item.label}</span><strong>{total>0?(item.value/total*100).toFixed(1):'0'}%</strong></div>)}{total===0&&<span className="p1-subtle">No KES asset values yet.</span>}</div></div>
+    <div className="allocation-inner"><div className="donut" style={{background:bg}} role="img" aria-label="Current KES asset allocation by actual registered category"><div><strong>{total?(total/1_000_000).toFixed(2)+'M':'—'}</strong><span>Tracked value · KES</span></div></div>
+    <div className="allocation-legend">{boundaries.filter(i=>i.value>0).map(item=><div key={item.label}><span className="legend-name"><i style={{background:item.color}}/>{item.label}</span><strong>{total>0?(item.value/total*100).toFixed(1):'0'}%</strong></div>)}{total===0&&<span className="p1-subtle">No held KES asset values yet.</span>}</div></div>
   </Surface>
 }
 
-function Performance({items,onView}: {items:Asset[];onView:()=>void}) {
+function Performance({items,store,onView}: {items:Asset[];store:RegistryState;onView:()=>void}) {
   const [metric,setMetric]=useState<'Value'|'Equity'>('Value')
-  const categories=allocation
   const kes=items.filter(a=>a.currency==='KES'&&['ACQUIRED','ACTIVE','SUSPENDED'].includes(a.lifecycle||''))
-  const grand=kes.reduce((sum,a)=>sum+(metric==='Value'?a.value:a.equity),0)
-  const series=categories.map(c=>kes.filter(a=>a.category===c.label).reduce((sum,a)=>sum+(metric==='Value'?a.value:a.equity),0))
+  const categories=[...new Set(kes.map(a=>a.category))].map((label,i)=>({label,color:allocationColors[i%allocationColors.length]}))
+  const equity=new Map(kes.map(a=>[a.id,indicativeEquity(store,a.id)]))
+  const unknown=kes.filter(a=>equity.get(a.id)?.method==='UNKNOWN').length
+  const contribution=(a:Asset)=>metric==='Value'?a.value:equity.get(a.id)?.method==='UNKNOWN'?0:equity.get(a.id)?.amount||0
+  const grand=kes.reduce((sum,a)=>sum+contribution(a),0)
+  const series=categories.map(c=>kes.filter(a=>a.category===c.label).reduce((sum,a)=>sum+contribution(a),0))
   const maxima=Math.max(1,...series)
   return <Surface title="Category contribution" className="performance-surface" action={<button type="button" className="link-button" onClick={onView}>View performance <ArrowRight size={15}/></button>}>
-    <div className="metric-switch"><button type="button" className={metric==='Value'?'active':''} aria-pressed={metric==='Value'} onClick={()=>setMetric('Value')}>Value</button><button type="button" className={metric==='Equity'?'active':''} aria-pressed={metric==='Equity'} onClick={()=>setMetric('Equity')}>Equity</button><span>KES category snapshot</span></div>
+    <div className="metric-switch"><button type="button" className={metric==='Value'?'active':''} aria-pressed={metric==='Value'} onClick={()=>setMetric('Value')}>Value</button><button type="button" className={metric==='Equity'?'active':''} aria-pressed={metric==='Equity'} onClick={()=>setMetric('Equity')}>Equity</button><span>{metric==='Equity'&&unknown?unknown+' asset(s) with unknown debt excluded':'KES category snapshot'}</span></div>
     <div className="bars" aria-label={'Tracked '+metric.toLowerCase()+' by category, KES'}>
-      {series.map((value,i)=><div className="bar-cell" key={categories[i].label}><div className="bar-plot"><div style={{height:(value/maxima*100)+'%',background:categories[i].color}} title={categories[i].label+': '+(grand?value/grand*100:0).toFixed(1)+'%'} /></div><small>{categories[i].label}</small></div>)}
+      {series.map((value,i)=><div className="bar-cell" key={categories[i].label}><div className="bar-plot"><div style={{height:(value/maxima*100)+'%',background:categories[i].color}} title={categories[i].label+': '+(grand?value/grand*100:0).toFixed(1)+'%'}/></div><small>{categories[i].label}</small></div>)}
     </div>
-    <div className="perform-divider" />
+    <div className="perform-divider"/>
     <h3 className="mini-heading">Largest KES assets</h3>
-    <div className="perform-list">{kes.slice().sort((a,b)=>b.value-a.value).slice(0,4).map(asset=><div className="perform-item" key={asset.id}><AssetGlyph asset={asset}/><span>{asset.name}</span><strong>{short(asset.value)}</strong></div>)}{!kes.length&&<div className="p1-empty-small">No KES assets tracked.</div>}</div>
+    <div className="perform-list">{kes.slice().sort((a,b)=>b.value-a.value).slice(0,4).map(asset=><div className="perform-item" key={asset.id}><AssetGlyph asset={asset}/><span>{asset.name}</span><strong>{short(asset.value)}</strong></div>)}{!kes.length&&<div className="p1-empty-small">No held KES assets tracked.</div>}</div>
   </Surface>
 }
 
@@ -231,7 +237,7 @@ function Dashboard({items,store,onSelect}:{items:Asset[];store:RegistryState;onS
           <Kpi label="Recorded KES expenses" value={flow.count?short(flow.EXPENSE):'—'} change={flow.count?'Entered records':'No flow records'} icon={FileText} tone="red" detail="all-time entered expenses"/>
         </div>
         <div className="chart-grid"><TrendChart store={store} onView={()=>go('valuation-history')}/><AllocationChart items={items} onView={()=>go('allocation')}/></div>
-        <div className="bottom-grid"><AssetTable items={items} onSelect={onSelect} onViewAll={()=>go('assets')}/><Performance items={items} onView={()=>go('performance')}/></div>
+        <div className="bottom-grid"><AssetTable items={items} onSelect={onSelect} onViewAll={()=>go('assets')}/><Performance items={items} store={store} onView={()=>go('performance')}/></div>
       </div>
       <InsightPanels store={store}/>
     </div>
