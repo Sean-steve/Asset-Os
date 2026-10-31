@@ -13,26 +13,26 @@ import {withTenantTransaction} from '../dist/database.js'
 const contract=JSON.parse(readFileSync(new URL('../openapi/openapi.json',import.meta.url),'utf8'))
 const events=JSON.parse(readFileSync(new URL('../openapi/events.json',import.meta.url),'utf8'))
 const migration=(name)=>readFileSync(new URL('../migrations/'+name,import.meta.url),'utf8')
-const poolStub=(role='asset_os_app',applied=3,restricted=true)=>({
+const poolStub=(role='asset_os_app',applied=4,restricted=true)=>({
  query:async()=>({rows:[{role,applied,restricted}]}),
  end:async()=>{}
 })
 
-test('B0 OpenAPI is versioned, identifies implemented endpoints and blocks future routes',()=>{
+test('B1 OpenAPI is versioned, identifies implemented registry and future routes',()=>{
  assert.equal(contract.openapi,'3.1.0')
- assert.equal(contract.info.version,'0.1.0-b0')
+ assert.equal(contract.info.version,'0.2.0-b1')
  assert.equal(contract.paths['/health/ready'].get.security.length,0)
  assert.equal(contract.paths['/v1/openapi.json'].get.security.length,0)
- assert.equal(contract.paths['/v1/assets'].get['x-runtime-status'],'NOT_IMPLEMENTED_IN_B0')
+ assert.equal(contract.paths['/v1/assets'].get['x-runtime-status'],'IMPLEMENTED_B1')
  assert.deepEqual(contract.paths['/v1/assets'].post.security,[{KernelBearer:[]}])
  assert.ok(contract.components.securitySchemes.KernelBearer)
  assert.equal(contract.paths['/v1/assets'].post.parameters.some(x=>x.name==='Idempotency-Key'&&x.required),true)
  assert.ok(Object.keys(contract.paths).length>=16)
  assert.equal(API_VERSION,'1')
- assert.equal(CONTRACT_VERSION,'2026-10-31.b0')
+ assert.equal(CONTRACT_VERSION,'2026-10-31.b1')
 })
 
-test('user-issued headers and bearer-looking tokens never grant domain access in B0',async()=>{
+test('unconfigured OIDC fails closed regardless of client headers',async()=>{
  const app=buildApp(poolStub())
  try{
   for(const headers of [{},{'x-tenant-id':'00000000-0000-4000-8000-000000000000'},
@@ -48,7 +48,7 @@ test('user-issued headers and bearer-looking tokens never grant domain access in
  }finally{await app.close()}
 })
 
-test('liveness is public but readiness only claims ready for verified runtime role plus B0 migrations',async()=>{
+test('liveness public but readiness demands restricted role and all four applied migrations',async()=>{
  const good=buildApp(poolStub())
  assert.equal((await good.inject('/health/live')).json().status,'ok')
  assert.equal((await good.inject('/health/ready')).statusCode,200)
@@ -104,9 +104,9 @@ test('event contracts respect separate authorities, schema version and delivery 
  assert.ok(envelope.required.includes('schemaVersion'))
 })
 
-test('three checksummed migrations cover registry, domain and forced-RLS event storage',async()=>{
+test('four checksummed migrations cover registry, RLS and B1 permissions',async()=>{
  const migrations=await readMigrations()
- assert.deepEqual(migrations.map(m=>m.version),['0001_tenants_registry','0002_domain_tables','0003_governance_rls'])
+ assert.deepEqual(migrations.map(m=>m.version),['0001_tenants_registry','0002_domain_tables','0003_governance_rls','0004_b1_registry_security'])
  assert.ok(migrations.every(m=>m.sha256.length===64))
  const sql=migrations.map(m=>m.sql).join('\n')
  assert.ok((sql.match(/CREATE TABLE asset_os\./g)||[]).length>=30)

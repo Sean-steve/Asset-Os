@@ -1,18 +1,28 @@
 import fastify from 'fastify'
 import {readFileSync} from 'node:fs'
+import {randomUUID} from 'node:crypto'
 import type {Pool} from 'pg'
-import {checkReadiness} from './database.js'
-import {API_VERSION,CONTRACT_VERSION,FOUNDATION_ONLY_CAPABILITIES,identityNotConfigured} from './contracts.js'
+import {checkReadiness,type TenantSqlClient} from './database.js'
+import {
+ API_VERSION,CONTRACT_VERSION,B1_CAPABILITIES,identityNotConfigured
+} from './contracts.js'
+import {
+ ApiFault,authenticate,requireMembership,requireRole,selectTenant,
+ type VerifiedMembership,type OidcVerifier
+} from './identity.js'
+import {withTenantTransaction} from './database.js'
+import {createAsset,getAsset,listAssets,updateAsset,etag} from './registry.js'
 
-type PoolPort=Pick<Pool,'query'|'end'>
+type PoolPort=Pick<Pool,'query'|'end'> & Partial<Pick<Pool,'connect'>>
 const openapi=JSON.parse(readFileSync(new URL('../openapi/openapi.json',import.meta.url),'utf8')) as object
+function header(value:string|string[]|undefined):string|undefined{
+ return typeof value==='string'?value:undefined
+}
 
-export function buildApp(pool:PoolPort){
+export function buildApp(pool:PoolPort,verifier:OidcVerifier|null=null){
  const app=fastify({
   logger:{redact:{paths:['req.headers.authorization','req.headers.cookie','res.headers.set-cookie'],censor:'[REDACTED]'}},
-  bodyLimit:1024*1024,
-  trustProxy:false,
-  requestIdHeader:false
+  bodyLimit:512*1024,trustProxy:false,requestIdHeader:false
  })
  app.addHook('onSend',async(_req,reply,payload)=>{
   reply.header('Cache-Control','no-store')
@@ -21,29 +31,77 @@ export function buildApp(pool:PoolPort){
   reply.header('X-Frame-Options','DENY')
   return payload
  })
- app.get('/health/live',async()=>({status:'ok',service:'asset-os-api',phase:'B0'}))
+ app.get('/health/live',async()=>({status:'ok',service:'asset-os-api',phase:'B1'}))
  app.get('/health/ready',async(_request,reply)=>{
-  try{
-   if(await checkReadiness(pool))return {status:'ready',database:'reachable',schema:'b0'}
-  }catch{/* do not leak connection strings, table names or credentials */}
+  try{if(await checkReadiness(pool))return {status:'ready',database:'reachable',schema:'b1'}}
+  catch{/* redact details including connection strings */}
   return reply.code(503).send({status:'unready',database:'unavailable'})
  })
  app.get('/v1/meta',async()=>({
-  apiVersion:API_VERSION,contractVersion:CONTRACT_VERSION,phase:'B0',
-  runtimeDomainAccess:'IDENTITY_NOT_CONFIGURED',
-  frontendConnection:'NOT_CONNECTED',
-  capabilities:FOUNDATION_ONLY_CAPABILITIES
+  apiVersion:API_VERSION,contractVersion:CONTRACT_VERSION,phase:'B1',
+  runtimeDomainAccess:verifier?'OIDC_CONFIGURED_MEMBERSHIP_REQUIRED':'IDENTITY_NOT_CONFIGURED',
+  frontendConnection:'NOT_CONNECTED',capabilities:B1_CAPABILITIES
  }))
  app.get('/v1/openapi.json',async()=>openapi)
- // Explicit fail-closed boundary. Phase B0 has no issuer/JWKS, no actor binding
- // or authorization. Headers claiming subject or tenant NEVER turn on CRUD.
+
+ async function authorized<T>(req:{headers:Record<string,string|string[]|undefined>},capability:'read'|'write',
+  handler:(client:TenantSqlClient,member:VerifiedMembership,requestId:string)=>Promise<T>):Promise<T>{
+  if(!verifier)throw new ApiFault(503,'IDENTITY_NOT_CONFIGURED',
+   'Authenticated Asset OS access requires a configured Personal Kernel/OIDC issuer.')
+  const principal=await authenticate(header(req.headers.authorization),verifier)
+  const tenantId=selectTenant(header(req.headers['x-tenant-id']))
+  if(!pool.connect)throw new ApiFault(503,'DATABASE_NOT_READY','Backend database is not configured.')
+  const requestId=randomUUID()
+  return withTenantTransaction(pool as Pick<Pool,'connect'>,tenantId,async client=>{
+   const membership=await requireMembership(client,tenantId,principal)
+   requireRole(membership,capability)
+   return handler(client,membership,requestId)
+  })
+ }
+ app.get('/v1/me',async req=>{
+  return authorized(req,'read',async(_client,member)=>({
+   tenantId:member.tenantId,identityId:member.identityId,role:member.role,
+   issuer:member.issuer,authenticated:true
+  }))
+ })
+ app.get('/v1/assets',async req=>{
+  return authorized(req,'read',async(client,member)=>listAssets(client,member.tenantId,req.query))
+ })
+ app.get('/v1/assets/:assetId',async(req,reply)=>{
+  const asset=await authorized(req,'read',async(client,member)=>
+   getAsset(client,member.tenantId,(req.params as {assetId:string}).assetId))
+  reply.header('ETag',etag(asset.recordVersion))
+  return asset
+ })
+ app.post('/v1/assets',async(req,reply)=>{
+  const command=await authorized(req,'write',async(client,member,requestId)=>
+   createAsset(client,member,req.body,header(req.headers['idempotency-key']),requestId))
+  reply.code(command.status).header('ETag',etag(command.body.recordVersion))
+  if(command.replayed)reply.header('Idempotent-Replayed','true')
+  return command.body
+ })
+ app.patch('/v1/assets/:assetId',async(req,reply)=>{
+  const command=await authorized(req,'write',async(client,member,requestId)=>
+   updateAsset(client,member,(req.params as {assetId:string}).assetId,req.body,
+    header(req.headers['if-match']),header(req.headers['idempotency-key']),requestId))
+  reply.code(command.status).header('ETag',etag(command.body.recordVersion))
+  if(command.replayed)reply.header('Idempotent-Replayed','true')
+  return command.body
+ })
+ // Future lifecycle/valuation/finance/ops/portfolio routes: explicitly blocked.
  app.all('/v1/*',async(request,reply)=>
   reply.code(503).send(identityNotConfigured(request.id)))
  app.setNotFoundHandler(async(request,reply)=>
   reply.code(404).send({error:{code:'NOT_FOUND',message:'Unknown API route.',requestId:request.id}}))
  app.setErrorHandler(async(error,request,reply)=>{
-  request.log.error({error},'API request failed')
-  return reply.code(500).send({error:{code:'INTERNAL_ERROR',message:'Request failed.',requestId:request.id}})
+  if(error instanceof ApiFault){
+   return reply.code(error.status).send({error:{code:error.code,message:error.message,requestId:request.id}})
+  }
+  // Do not return database errors, query text, token claims or connection details.
+  request.log.error({code:'DOMAIN_OPERATION_FAILED',type:error.name},'Unexpected domain operation failure')
+  return reply.code(500).send({error:{
+   code:'INTERNAL_ERROR',message:'Request failed.',requestId:request.id
+  }})
  })
  app.addHook('onClose',async()=>{await pool.end()})
  return app

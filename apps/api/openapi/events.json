@@ -1,5 +1,5 @@
 {
-  "version": "2026-10-31.b0",
+  "version": "2026-10-31.b1",
   "transport": "NOT_CONFIGURED",
   "owner": "ASSET_OS",
   "allowedEmissions": [
@@ -75,6 +75,19 @@
         "effectiveOn",
         "currency"
       ]
+    },
+    {
+      "type": "asset.updated.v1",
+      "producer": "ASSET_OS",
+      "recipient": [
+        "WEALTH_OS",
+        "PERSONAL_KERNEL"
+      ],
+      "authority": "asset registry metadata change (no financial ledger)",
+      "payloadFields": [
+        "assetId",
+        "recordVersion"
+      ]
     }
   ],
   "allowedConsumption": [
@@ -102,6 +115,7 @@
     "atomic outbox",
     "correlation and causation IDs",
     "minimum necessary payload",
-    "no background delivery B0"
+    "no background delivery B0",
+    "signed OIDC subject-to-member enforcement on source commands"
   ]
 }

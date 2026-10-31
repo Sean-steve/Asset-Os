@@ -1,6 +1,14 @@
 # Asset OS — Personal Kernel Asset Intelligence
 
-**Frontend: Phase 7 certified — 60/60 screen experiences. Backend: Phase B0 PostgreSQL foundation implemented (no identity or live domain endpoints yet).** This is a browser-local prototype, not a production backend. Five starter assets are clearly illustrative; user-entered asset, ownership, finance, operation and portfolio changes persist in local browser storage only. Dashboard valuation history and operational alerts now derive only from recorded data, with honest empty states rather than synthetic activity.
+**Frontend: Phase 7 certified — 60/60 screen experiences. Backend: Phase B1 verified OIDC/tenant membership and PostgreSQL Asset Registry API implemented (provider credentials not configured).** This is a browser-local prototype, not a production backend. Five starter assets are clearly illustrative; user-entered asset, ownership, finance, operation and portfolio changes persist in local browser storage only. Dashboard valuation history and operational alerts now derive only from recorded data, with honest empty states rather than synthetic activity.
+
+## Phase B1 — Trusted Identity & PostgreSQL Asset Registry
+
+Backend B1 implements an **OIDC/JWKS RS256-verifying** identity boundary and tenant role authorization in the same PostgreSQL transaction as registry commands. It includes a privileged, signed-access-token-based first-owner bootstrap; `GET /v1/me`; `GET/POST /v1/assets`; `GET/PATCH /v1/assets/:id`; immutable asset ID/currency/lifecycle from client edits; strong ETag concurrency; 24-hour idempotency keys; minimum-necessary audit and atomic outbox events. All future domain routes remain blocked.
+
+**An actual Personal Kernel or OIDC issuer is not yet configured; the public GitHub Pages frontend remains disconnected.** Until operator-supplied issuer, audience and JWKS are configured and a verified owner is enrolled, all authenticated registry routes fail closed. Do not import illustrative localStorage samples into a real tenant.
+
+For architecture, identity proofing requirements, bootstrap commands and real PostgreSQL test evidence, see [B1 Backend Integration Guide](docs/BACKEND_B1.md).
 
 ## Phase B0 — PostgreSQL backend and API contracts (31 October 2026)
 

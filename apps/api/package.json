@@ -1,6 +1,6 @@
 {
   "name": "@asset-os/api",
-  "version": "0.1.0-b0",
+  "version": "0.2.0-b1",
   "private": true,
   "type": "module",
   "engines": {
@@ -14,12 +14,14 @@
     "migrate": "npm run build && node dist/migrate.js",
     "migrate:check": "npm run build && node dist/migrate.js --check",
     "test": "npm run build && node --test test/*.unit.test.mjs",
-    "test:db": "npm run build && node --test test/*.db.test.mjs"
+    "test:db": "npm run build && node --test test/*.db.test.mjs",
+    "bootstrap": "npm run build && node dist/bootstrap.js"
   },
   "dependencies": {
     "fastify": "5.6.1",
     "pg": "8.16.3",
-    "zod": "4.1.6"
+    "zod": "4.1.6",
+    "jose": "6.1.0"
   },
   "devDependencies": {
     "@types/node": "22.18.6",

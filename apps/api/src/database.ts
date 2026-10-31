@@ -5,7 +5,7 @@ import {serverConfig} from './config.js'
 export function createPool(env:NodeJS.ProcessEnv=process.env){
  const config=serverConfig(env)
  return new pg.Pool({connectionString:config.databaseUrl,max:10,
-  connectionTimeoutMillis:5000,idleTimeoutMillis:30000,application_name:'asset-os-api-b0'})
+  connectionTimeoutMillis:5000,idleTimeoutMillis:30000,application_name:'asset-os-api-b1'})
 }
 export type TenantSqlClient=Pick<PoolClient,'query'>
 /** Use ONLY after a trusted issuer validates subject, tenant and scope. */
@@ -25,7 +25,7 @@ export async function withTenantTransaction<T>(
  finally{client.release()}
 }
 export async function checkReadiness(pool:Pick<pg.Pool,'query'>){
- const result=await pool.query("SELECT current_user AS role, (SELECT NOT rolsuper AND NOT rolbypassrls FROM pg_roles WHERE rolname=current_user) AS restricted, (SELECT count(*)::integer FROM asset_os.schema_migrations WHERE version IN ('0001_tenants_registry','0002_domain_tables','0003_governance_rls')) AS applied")
+ const result=await pool.query("SELECT current_user AS role, (SELECT NOT rolsuper AND NOT rolbypassrls FROM pg_roles WHERE rolname=current_user) AS restricted, (SELECT count(*)::integer FROM asset_os.schema_migrations WHERE version IN ('0001_tenants_registry','0002_domain_tables','0003_governance_rls','0004_b1_registry_security')) AS applied")
  const row=result.rows[0] as {role:string;restricted:boolean;applied:number}|undefined
- return Boolean(row&&row.role==='asset_os_app'&&row.restricted===true&&row.applied===3)
+ return Boolean(row&&row.role==='asset_os_app'&&row.restricted===true&&row.applied===4)
 }
