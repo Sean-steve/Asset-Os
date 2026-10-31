@@ -162,6 +162,14 @@ test('transfer cannot exceed source share or transfer to self',()=>{
  checkError(()=>transferOwnership(assigned,transfer,AT),/exceed the source/)
  checkError(()=>transferOwnership(assigned,{...transfer,percentage:30,partyRef:'origin'},AT),/different receiving party/)
 })
+test('transfer rejects overlapping rights when receiving party already holds the same ownership dimension',()=>{
+ const s=acquired(),id=s.records[0].id
+ const a=assignOwnership(s,{assetId:id,dimension:'ECONOMIC',percentage:50,partyRef:'holder-a',partyLabel:'A',effectiveFrom:'2026-10-16',note:''},AT)
+ const b=assignOwnership(a,{assetId:id,dimension:'ECONOMIC',percentage:40,partyRef:'holder-b',partyLabel:'B',effectiveFrom:'2026-10-16',note:''},AT)
+ const source=activeInterests(b,id,AT,'ECONOMIC').find(i=>i.partyRef==='holder-a')
+ checkError(()=>transferOwnership(b,{assetId:id,sourceInterestId:source.id,partyRef:'holder-b',partyLabel:'B',percentage:10,effectiveOn:'2026-10-30',note:''},AT),/already has an active interest/)
+ assert.equal(ownershipTotal(b,id,'ECONOMIC',AT),90)
+})
 test('disposal requires explicit typed confirmation and valid allowed lifecycle',()=>{
  const s=acquired(),id=s.records[0].id
  const input={assetId:id,type:'SALE',date:'2026-10-30',proceeds:1200,costs:45,counterparty:'Example buyer',reason:'Reallocate capital',confirm:'DISPOSE'}
