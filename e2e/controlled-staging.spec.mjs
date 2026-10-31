@@ -69,7 +69,7 @@ test('B2.1 browser → test OIDC PKCE → real Fastify → PostgreSQL lifecycle/
  await page.getByLabel('Confirmation (type DISPOSE)').fill('DISPOSE')
  await page.getByRole('button',{name:'Confirm recorded disposition'}).click()
  await expect(page.locator('.b21-workflow > .b21-summary')).toContainText('Disposed')
- await expect(page.locator('.b21-workflow > .b21-summary')).toContainText('174.75 KES')
+ await expect(page.locator('.b21-readonly .b21-summary')).toContainText('174.75 KES')
  await page.locator('.b21-tabs').getByRole('button',{name:'Overview',exact:true}).click()
  await page.getByLabel('Reason for transition').fill('Preserve the historic CI asset')
  await page.getByRole('button',{name:'Archive disposed asset'}).click()
