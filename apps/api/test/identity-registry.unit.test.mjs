@@ -37,9 +37,9 @@ test('OIDC verifies signed RS256 tokens with pinned issuer/audience and lifetime
    .setSubject('test-subject').setIssuedAt()
    .setExpirationTime(options.expiry||'15m').sign(privateKey)
   assert.deepEqual(await verifier.verify(await sign()),{issuer,subject:'test-subject'})
-  await assert.rejects(()=>verifier.verify(await sign({audience:'wrong-api'})))
-  await assert.rejects(()=>verifier.verify(await sign({issuer:'http://127.0.0.1:'+address.port+'/other'})))
-  await assert.rejects(()=>verifier.verify(await sign({expiry:'-1h'})))
+  await assert.rejects(async()=>verifier.verify(await sign({audience:'wrong-api'})))
+  await assert.rejects(async()=>verifier.verify(await sign({issuer:'http://127.0.0.1:'+address.port+'/other'})))
+  await assert.rejects(async()=>verifier.verify(await sign({expiry:'-1h'})))
   await assert.rejects(()=>verifier.verify('aaa.bbb.ccc'))
  }finally{await new Promise((r,j)=>server.close(e=>e?j(e):r()))}
 })
