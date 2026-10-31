@@ -1,6 +1,6 @@
 # Asset OS — Screen Implementation Matrix
 
-**Total:** 60 screens (60 principal product experiences). Phases 1–4 (Screens 01–40) are implemented as a frontend prototype; no backend, production data or Kernel integration is connected.
+**Total:** 60 screens (60 principal product experiences). Phases 1–5 (Screens 01–50) are implemented as a frontend prototype; no backend, production data or Kernel integration is connected.
 
 | Phase | Screen IDs | Feature area | Current status |
 | --- | --- | --- | --- |
@@ -9,7 +9,7 @@
 | 2 | 11–20 | Acquisition center and wizard, acquisition details, cost basis, lifecycle, ownership center/details/transfer, disposition wizard and history | **Implemented (frontend-only)** |
 | 3 | 21–30 | Draft/review valuations, history, financing terms and observations, income/expenses, cash flow, ROI and reconciliation | **Implemented (frontend-only)** |
 | 4 | 31–40 | Maintenance plans/jobs, insurance and renewals, utilization, evidence, locations, relationships and operational calendar | **Implemented (frontend-only)** |
-| 5 | 41–50 | Portfolio, intelligence and risk | Planned |
+| 5 | 41–50 | Portfolio directory/details, allocation, comparison, performance, assessed risk, watchlist, scenario sensitivities and guided intelligence | **Implemented (frontend-only)** |
 | 6 | 51–60 | Kernel integration and administration | Planned |
 | 7 | All | Cross-role and responsive experience certification | Planned |
 
@@ -116,6 +116,36 @@
 - Component and dependency relations cannot be circular or self-referential.
 - Calendar only derives actual recorded operational dates, excludes disposed/archived assets from active reminders, and cannot change Human Kernel schedule authority.
 - No automatic Finance OS expense/payment, Mission OS tasks, third-party work order dispatch or calendar notification.
+
+## Phase 5 route and acceptance map
+
+| Screen | Route | Functional obligation |
+| --- | --- | --- |
+| 41 Portfolio Directory | `#/portfolios` | Create same-currency analytical groups; no synthetic portfolios |
+| 42 Portfolio Details | `#/portfolio/:id` | Add/remove member assets with membership history; never change legal ownership |
+| 43 Asset Allocation | `#/allocation` | Category/location/lifecycle/risk-label shares, same currency only |
+| 44 Asset Comparison | `#/comparison` | Select 2–4 assets; display differences and unknown inputs without FX |
+| 45 Performance Center | `#/performance` | Recorded income/expense, operating cash-on-cost, coverage and source limitations |
+| 46 Risk Management | `#/risk-center` | Assessments and explicit rule-derived operational signals |
+| 47 Risk Assessment | `#/risk/:id`, `#/risk/new` | Five self-reported weighted dimensions, source, rationale and effective-dated history |
+| 48 Underperforming | `#/underperforming` | Evidence-based negative cash flow, below-basis reviewed values, stale valuations, risk and maintenance flags |
+| 49 Forecasting & Scenarios | `#/scenarios` | One-period deterministic sensitivity; no probabilities or market-forecast claims |
+| 50 Intelligence Assistant | `#/intelligence` | Guided rules-only Q&A, explainable sources, local decision notes; no connected model |
+
+### Phase 5 release criteria
+
+- Preserve existing v1–v4 local snapshots through a version 5 migration with original asset IDs and histories.
+- Reject duplicate active portfolio memberships; retain removed memberships and archived groups as historical records.
+- Never sum assets across different currencies, silently convert FX, or infer debt from original principal.
+- Assets may appear in multiple portfolios: individual portfolio totals are not an authoritative consolidated net worth.
+- Compute value shares from current held assets only; missing/zero total has an explicit empty state.
+- Record risk dimension values in the range 1–5, effective date and rationale; normalize with visible fixed weights.
+- Do not synthesize personal financial history, professional risk scores, accepted valuations, utilization or AI results.
+- Derive watchlist signals only from observable entered cash flow, approved-local valuation, recorded basis, risk assessment and maintenance dates.
+- Scenario calculations must clearly show baseline/current input values and simple shock arithmetic, without future claims.
+- Intelligence assistant must identify itself as an offline guided rule explainer, not a connected AI model.
+- No autonomous sales, trades, transfers, Finance OS ledger posting, Kernel tasks or high-impact user decisions.
+- All ten screens navigable from the sidebar or roadmap, with empty, populated and error states.
 
 ## Functional acceptance
 
