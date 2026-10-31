@@ -1,5 +1,5 @@
 {
-  "version": "2026-10-31.b1",
+  "version": "2026-10-31.b2",
   "transport": "NOT_CONFIGURED",
   "owner": "ASSET_OS",
   "allowedEmissions": [
@@ -28,9 +28,8 @@
       "authority": "acquisition evidence only",
       "payloadFields": [
         "assetId",
-        "acquisitionId",
-        "effectiveOn",
-        "currency"
+        "recordId",
+        "recordVersion"
       ]
     },
     {
@@ -71,9 +70,8 @@
       "authority": "disposition history, not payment instruction",
       "payloadFields": [
         "assetId",
-        "dispositionId",
-        "effectiveOn",
-        "currency"
+        "recordId",
+        "recordVersion"
       ]
     },
     {
@@ -86,6 +84,48 @@
       "authority": "asset registry metadata change (no financial ledger)",
       "payloadFields": [
         "assetId",
+        "recordVersion"
+      ]
+    },
+    {
+      "type": "asset.lifecycle.changed.v1",
+      "producer": "ASSET_OS",
+      "recipient": [
+        "PERSONAL_KERNEL",
+        "WEALTH_OS"
+      ],
+      "authority": "state transition only; no scheduling authority",
+      "payloadFields": [
+        "assetId",
+        "recordId",
+        "recordVersion"
+      ]
+    },
+    {
+      "type": "asset.ownership.recorded.v1",
+      "producer": "ASSET_OS",
+      "recipient": [
+        "PERSONAL_KERNEL",
+        "WEALTH_OS"
+      ],
+      "authority": "user-entered ownership claim, NOT title verification",
+      "payloadFields": [
+        "assetId",
+        "recordId",
+        "recordVersion"
+      ]
+    },
+    {
+      "type": "asset.ownership.transferred.v1",
+      "producer": "ASSET_OS",
+      "recipient": [
+        "PERSONAL_KERNEL",
+        "WEALTH_OS"
+      ],
+      "authority": "user-entered percentage transfer history only",
+      "payloadFields": [
+        "assetId",
+        "recordId",
         "recordVersion"
       ]
     }
@@ -116,6 +156,7 @@
     "correlation and causation IDs",
     "minimum necessary payload",
     "no background delivery B0",
-    "signed OIDC subject-to-member enforcement on source commands"
+    "signed OIDC subject-to-member enforcement on source commands",
+    "B2 immutable asset histories, state guards, effective-dated ownership and transaction version checks"
   ]
 }

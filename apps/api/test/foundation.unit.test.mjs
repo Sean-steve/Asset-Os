@@ -13,14 +13,14 @@ import {withTenantTransaction} from '../dist/database.js'
 const contract=JSON.parse(readFileSync(new URL('../openapi/openapi.json',import.meta.url),'utf8'))
 const events=JSON.parse(readFileSync(new URL('../openapi/events.json',import.meta.url),'utf8'))
 const migration=(name)=>readFileSync(new URL('../migrations/'+name,import.meta.url),'utf8')
-const poolStub=(role='asset_os_app',applied=4,restricted=true)=>({
+const poolStub=(role='asset_os_app',applied=5,restricted=true)=>({
  query:async()=>({rows:[{role,applied,restricted}]}),
  end:async()=>{}
 })
 
 test('B1 OpenAPI is versioned, identifies implemented registry and future routes',()=>{
  assert.equal(contract.openapi,'3.1.0')
- assert.equal(contract.info.version,'0.2.0-b1')
+ assert.equal(contract.info.version,'0.3.0-b2')
  assert.equal(contract.paths['/health/ready'].get.security.length,0)
  assert.equal(contract.paths['/v1/openapi.json'].get.security.length,0)
  assert.equal(contract.paths['/v1/assets'].get['x-runtime-status'],'IMPLEMENTED_B1')
@@ -29,7 +29,7 @@ test('B1 OpenAPI is versioned, identifies implemented registry and future routes
  assert.equal(contract.paths['/v1/assets'].post.parameters.some(x=>x.name==='Idempotency-Key'&&x.required),true)
  assert.ok(Object.keys(contract.paths).length>=16)
  assert.equal(API_VERSION,'1')
- assert.equal(CONTRACT_VERSION,'2026-10-31.b1')
+ assert.equal(CONTRACT_VERSION,'2026-10-31.b2')
 })
 
 test('unconfigured OIDC fails closed regardless of client headers',async()=>{
@@ -48,7 +48,7 @@ test('unconfigured OIDC fails closed regardless of client headers',async()=>{
  }finally{await app.close()}
 })
 
-test('liveness public but readiness demands restricted role and all four applied migrations',async()=>{
+test('liveness public but readiness demands restricted role and all five applied migrations',async()=>{
  const good=buildApp(poolStub())
  assert.equal((await good.inject('/health/live')).json().status,'ok')
  assert.equal((await good.inject('/health/ready')).statusCode,200)
@@ -104,9 +104,9 @@ test('event contracts respect separate authorities, schema version and delivery 
  assert.ok(envelope.required.includes('schemaVersion'))
 })
 
-test('four checksummed migrations cover registry, RLS and B1 permissions',async()=>{
+test('five checksummed migrations cover registry, RLS and B2 immutable lifecycle evidence',async()=>{
  const migrations=await readMigrations()
- assert.deepEqual(migrations.map(m=>m.version),['0001_tenants_registry','0002_domain_tables','0003_governance_rls','0004_b1_registry_security'])
+ assert.deepEqual(migrations.map(m=>m.version),['0001_tenants_registry','0002_domain_tables','0003_governance_rls','0004_b1_registry_security','0005_b2_lifecycle_integrity'])
  assert.ok(migrations.every(m=>m.sha256.length===64))
  const sql=migrations.map(m=>m.sql).join('\n')
  assert.ok((sql.match(/CREATE TABLE asset_os\./g)||[]).length>=30)

@@ -2,9 +2,9 @@
   "openapi": "3.1.0",
   "info": {
     "title": "Asset OS — Backend API Contracts",
-    "version": "0.2.0-b1",
-    "summary": "B1 live OIDC-backed Asset Registry; remaining domain endpoints are planned",
-    "description": "B1 implements health/meta/OpenAPI, verified RS256/JWKS OIDC access tokens, PostgreSQL active tenant memberships and asset create/list/get/patch. Tenant ID headers are selection hints ONLY. All non-registry domain routes remain 503 until later phases. The static GitHub Pages frontend is NOT connected."
+    "version": "0.3.0-b2",
+    "summary": "B2 verified OIDC-backed Asset Registry, lifecycle, acquisition, ownership and disposition",
+    "description": "B2 implements guarded PostgreSQL lifecycle/acquisition/ownership/disposition commands and read-only history. All writes require verified tenant member, strong If-Match ETag and Idempotency-Key. Assets remain user-entered facts; no Finance OS ledger posting or legal ownership verification is implied. Production issuer and API host require operator configuration."
   },
   "servers": [
     {
@@ -732,12 +732,12 @@
     "/v1/assets/{assetId}/acquisitions": {
       "post": {
         "tags": [
-          "Lifecycle"
+          "Acquisition"
         ],
-        "summary": "Complete asset acquisition",
-        "operationId": "POST_lifecycle_complete_asset_acquisition",
+        "summary": "Record initial acquisition and itemized cost basis",
+        "operationId": "POST__v1_assets__assetId__acquisitions",
         "x-implementation-phase": "B2",
-        "x-runtime-status": "NOT_IMPLEMENTED_IN_B0",
+        "x-runtime-status": "IMPLEMENTED_B2",
         "x-domain-authority": "ASSET_OS",
         "security": [
           {
@@ -755,6 +755,26 @@
             }
           },
           {
+            "name": "X-Tenant-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Tenant selection only; effective access requires server-verified OIDC issuer/subject, ACTIVE membership and PostgreSQL RLS."
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^\"[1-9][0-9]{0,8}\"$"
+            },
+            "description": "Strong current asset record-version ETag. Stale commands return 412."
+          },
+          {
             "name": "Idempotency-Key",
             "in": "header",
             "required": true,
@@ -762,10 +782,123 @@
               "type": "string",
               "minLength": 8,
               "maxLength": 128
-            },
-            "description": "Stable per-tenant key; server enforces request hash and exactly-once command semantics when implemented."
+            }
           }
         ],
+        "responses": {
+          "201": {
+            "description": "Tenant-scoped persisted domain state; no external financial/legal certification",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LifecycleCommandResponse"
+                }
+              }
+            },
+            "headers": {
+              "ETag": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Idempotent-Replayed": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Structured domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Structured domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Structured domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Structured domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Structured domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "412": {
+            "description": "Structured domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Structured domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "428": {
+            "description": "Structured domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Structured domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
         "requestBody": {
           "required": true,
           "content": {
@@ -775,20 +908,99 @@
               }
             }
           }
-        },
+        }
+      },
+      "get": {
+        "tags": [
+          "Acquisition"
+        ],
+        "summary": "Read initial acquisition and cost components",
+        "operationId": "GET__v1_assets__assetId__acquisitions",
+        "x-implementation-phase": "B2",
+        "x-runtime-status": "IMPLEMENTED_B2",
+        "x-domain-authority": "ASSET_OS",
+        "security": [
+          {
+            "KernelBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "assetId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "X-Tenant-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Tenant selection only; effective access requires server-verified OIDC issuer/subject, ACTIVE membership and PostgreSQL RLS."
+          }
+        ],
         "responses": {
-          "201": {
-            "description": "Accepted contract response",
+          "200": {
+            "description": "Tenant-scoped persisted data",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Acquisition"
+                  "type": [
+                    "object",
+                    "null"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Structured domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Structured domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Structured domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Structured domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
                 }
               }
             }
           },
           "503": {
-            "description": "Domain access intentionally blocked in B0 until verified Kernel identity",
+            "description": "Structured domain error",
             "content": {
               "application/json": {
                 "schema": {
@@ -805,10 +1017,10 @@
         "tags": [
           "Ownership"
         ],
-        "summary": "Record dimension-specific ownership",
-        "operationId": "POST_ownership_record_dimension_specific_ownership",
+        "summary": "Assign dimension-specific ownership claim",
+        "operationId": "POST__v1_assets__assetId__ownership_interests",
         "x-implementation-phase": "B2",
-        "x-runtime-status": "NOT_IMPLEMENTED_IN_B0",
+        "x-runtime-status": "IMPLEMENTED_B2",
         "x-domain-authority": "ASSET_OS",
         "security": [
           {
@@ -826,6 +1038,26 @@
             }
           },
           {
+            "name": "X-Tenant-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Tenant selection only; effective access requires server-verified OIDC issuer/subject, ACTIVE membership and PostgreSQL RLS."
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^\"[1-9][0-9]{0,8}\"$"
+            },
+            "description": "Strong current asset record-version ETag. Stale commands return 412."
+          },
+          {
             "name": "Idempotency-Key",
             "in": "header",
             "required": true,
@@ -833,10 +1065,123 @@
               "type": "string",
               "minLength": 8,
               "maxLength": 128
-            },
-            "description": "Stable per-tenant key; server enforces request hash and exactly-once command semantics when implemented."
+            }
           }
         ],
+        "responses": {
+          "201": {
+            "description": "Tenant-scoped persisted domain state; no external financial/legal certification",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LifecycleCommandResponse"
+                }
+              }
+            },
+            "headers": {
+              "ETag": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Idempotent-Replayed": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Structured domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Structured domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Structured domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Structured domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Structured domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "412": {
+            "description": "Structured domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Structured domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "428": {
+            "description": "Structured domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Structured domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
         "requestBody": {
           "required": true,
           "content": {
@@ -846,20 +1191,99 @@
               }
             }
           }
-        },
+        }
+      },
+      "get": {
+        "tags": [
+          "Ownership"
+        ],
+        "summary": "Read effective-dated ownership interest history",
+        "operationId": "GET__v1_assets__assetId__ownership_interests",
+        "x-implementation-phase": "B2",
+        "x-runtime-status": "IMPLEMENTED_B2",
+        "x-domain-authority": "ASSET_OS",
+        "security": [
+          {
+            "KernelBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "assetId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "X-Tenant-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Tenant selection only; effective access requires server-verified OIDC issuer/subject, ACTIVE membership and PostgreSQL RLS."
+          }
+        ],
         "responses": {
-          "201": {
-            "description": "Accepted contract response",
+          "200": {
+            "description": "Tenant-scoped persisted data",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Asset"
+                  "type": "array",
+                  "items": {
+                    "type": "object"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Structured domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Structured domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Structured domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Structured domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
                 }
               }
             }
           },
           "503": {
-            "description": "Domain access intentionally blocked in B0 until verified Kernel identity",
+            "description": "Structured domain error",
             "content": {
               "application/json": {
                 "schema": {
@@ -1488,6 +1912,1180 @@
           }
         }
       }
+    },
+    "/v1/assets/{assetId}/lifecycle-actions": {
+      "post": {
+        "tags": [
+          "Lifecycle"
+        ],
+        "summary": "Start acquisition or guarded lifecycle transition",
+        "operationId": "POST__v1_assets__assetId__lifecycle_actions",
+        "x-implementation-phase": "B2",
+        "x-runtime-status": "IMPLEMENTED_B2",
+        "x-domain-authority": "ASSET_OS",
+        "security": [
+          {
+            "KernelBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "assetId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "X-Tenant-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Tenant selection only; effective access requires server-verified OIDC issuer/subject, ACTIVE membership and PostgreSQL RLS."
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^\"[1-9][0-9]{0,8}\"$"
+            },
+            "description": "Strong current asset record-version ETag. Stale commands return 412."
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 8,
+              "maxLength": 128
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Guarded lifecycle state transition completed, with updated asset ETag",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LifecycleCommandResponse"
+                }
+              }
+            },
+            "headers": {
+              "ETag": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Idempotent-Replayed": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Structured domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Structured domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Structured domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Structured domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Structured domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "412": {
+            "description": "Structured domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Structured domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "428": {
+            "description": "Structured domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Structured domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LifecycleCommand"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/assets/{assetId}/ownership-transfers": {
+      "post": {
+        "tags": [
+          "Ownership"
+        ],
+        "summary": "Transfer active economic or beneficial interest, retaining history",
+        "operationId": "POST__v1_assets__assetId__ownership_transfers",
+        "x-implementation-phase": "B2",
+        "x-runtime-status": "IMPLEMENTED_B2",
+        "x-domain-authority": "ASSET_OS",
+        "security": [
+          {
+            "KernelBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "assetId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "X-Tenant-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Tenant selection only; effective access requires server-verified OIDC issuer/subject, ACTIVE membership and PostgreSQL RLS."
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^\"[1-9][0-9]{0,8}\"$"
+            },
+            "description": "Strong current asset record-version ETag. Stale commands return 412."
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 8,
+              "maxLength": 128
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Tenant-scoped persisted domain state; no external financial/legal certification",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LifecycleCommandResponse"
+                }
+              }
+            },
+            "headers": {
+              "ETag": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Idempotent-Replayed": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Structured domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Structured domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Structured domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Structured domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Structured domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "412": {
+            "description": "Structured domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Structured domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "428": {
+            "description": "Structured domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Structured domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OwnershipTransferRequest"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/assets/{assetId}/disposition": {
+      "post": {
+        "tags": [
+          "Disposition"
+        ],
+        "summary": "Record disposition and snapshot indicative gain without financial posting",
+        "operationId": "POST__v1_assets__assetId__disposition",
+        "x-implementation-phase": "B2",
+        "x-runtime-status": "IMPLEMENTED_B2",
+        "x-domain-authority": "ASSET_OS",
+        "security": [
+          {
+            "KernelBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "assetId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "X-Tenant-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Tenant selection only; effective access requires server-verified OIDC issuer/subject, ACTIVE membership and PostgreSQL RLS."
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^\"[1-9][0-9]{0,8}\"$"
+            },
+            "description": "Strong current asset record-version ETag. Stale commands return 412."
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 8,
+              "maxLength": 128
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Tenant-scoped persisted domain state; no external financial/legal certification",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LifecycleCommandResponse"
+                }
+              }
+            },
+            "headers": {
+              "ETag": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Idempotent-Replayed": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Structured domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Structured domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Structured domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Structured domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Structured domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "412": {
+            "description": "Structured domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Structured domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "428": {
+            "description": "Structured domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Structured domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DispositionRequest"
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "Disposition"
+        ],
+        "summary": "Read disposition and indicative gain or null",
+        "operationId": "GET__v1_assets__assetId__disposition",
+        "x-implementation-phase": "B2",
+        "x-runtime-status": "IMPLEMENTED_B2",
+        "x-domain-authority": "ASSET_OS",
+        "security": [
+          {
+            "KernelBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "assetId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "X-Tenant-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Tenant selection only; effective access requires server-verified OIDC issuer/subject, ACTIVE membership and PostgreSQL RLS."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Tenant-scoped persisted data",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": [
+                    "object",
+                    "null"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Structured domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Structured domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Structured domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Structured domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Structured domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/assets/{assetId}/lifecycle": {
+      "get": {
+        "tags": [
+          "Lifecycle"
+        ],
+        "summary": "Read complete immutable lifecycle and ownership evidence",
+        "operationId": "GET__v1_assets__assetId__lifecycle",
+        "x-implementation-phase": "B2",
+        "x-runtime-status": "IMPLEMENTED_B2",
+        "x-domain-authority": "ASSET_OS",
+        "security": [
+          {
+            "KernelBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "assetId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "X-Tenant-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Tenant selection only; effective access requires server-verified OIDC issuer/subject, ACTIVE membership and PostgreSQL RLS."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Tenant-scoped persisted data",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LifecycleSnapshot"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Structured domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Structured domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Structured domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Structured domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Structured domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/assets/{assetId}/cost-basis": {
+      "get": {
+        "tags": [
+          "Acquisition"
+        ],
+        "summary": "Read exact user-entered itemized acquisition cost basis",
+        "operationId": "GET__v1_assets__assetId__cost_basis",
+        "x-implementation-phase": "B2",
+        "x-runtime-status": "IMPLEMENTED_B2",
+        "x-domain-authority": "ASSET_OS",
+        "security": [
+          {
+            "KernelBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "assetId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "X-Tenant-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Tenant selection only; effective access requires server-verified OIDC issuer/subject, ACTIVE membership and PostgreSQL RLS."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Tenant-scoped persisted data",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Structured domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Structured domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Structured domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Structured domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Structured domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/assets/{assetId}/ownership-events": {
+      "get": {
+        "tags": [
+          "Ownership"
+        ],
+        "summary": "Read immutable assignments and transfer history",
+        "operationId": "GET__v1_assets__assetId__ownership_events",
+        "x-implementation-phase": "B2",
+        "x-runtime-status": "IMPLEMENTED_B2",
+        "x-domain-authority": "ASSET_OS",
+        "security": [
+          {
+            "KernelBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "assetId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "X-Tenant-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Tenant selection only; effective access requires server-verified OIDC issuer/subject, ACTIVE membership and PostgreSQL RLS."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Tenant-scoped persisted data",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Structured domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Structured domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Structured domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Structured domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Structured domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/acquisitions": {
+      "get": {
+        "tags": [
+          "Acquisition"
+        ],
+        "summary": "Browse tenant acquisition history",
+        "operationId": "GET__v1_acquisitions",
+        "x-implementation-phase": "B2",
+        "x-runtime-status": "IMPLEMENTED_B2",
+        "x-domain-authority": "ASSET_OS",
+        "security": [
+          {
+            "KernelBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-Tenant-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Tenant selection only; effective access requires server-verified OIDC issuer/subject, ACTIVE membership and PostgreSQL RLS."
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 30
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 512
+            },
+            "description": "Opaque server-issued cursor; do not construct manually."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Tenant-scoped persisted data",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DomainHistoryPage"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Structured domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Structured domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Structured domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Structured domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Structured domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/dispositions": {
+      "get": {
+        "tags": [
+          "Disposition"
+        ],
+        "summary": "Browse tenant disposition history",
+        "operationId": "GET__v1_dispositions",
+        "x-implementation-phase": "B2",
+        "x-runtime-status": "IMPLEMENTED_B2",
+        "x-domain-authority": "ASSET_OS",
+        "security": [
+          {
+            "KernelBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "X-Tenant-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Tenant selection only; effective access requires server-verified OIDC issuer/subject, ACTIVE membership and PostgreSQL RLS."
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 30
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 512
+            },
+            "description": "Opaque server-issued cursor; do not construct manually."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Tenant-scoped persisted data",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DomainHistoryPage"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Structured domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Structured domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Structured domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Structured domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Structured domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -1900,11 +3498,6 @@
       "AcquisitionRequest": {
         "type": "object",
         "additionalProperties": false,
-        "required": [
-          "method",
-          "effectiveOn",
-          "costs"
-        ],
         "properties": {
           "method": {
             "type": "string",
@@ -1923,60 +3516,31 @@
             "type": "string",
             "format": "date"
           },
+          "counterpartyLabel": {
+            "type": "string",
+            "maxLength": 120
+          },
           "evidenceReference": {
             "type": "string",
             "maxLength": 140
           },
+          "notes": {
+            "type": "string",
+            "maxLength": 600
+          },
           "costs": {
-            "type": "object",
-            "additionalProperties": {
-              "type": "string",
-              "pattern": "^(0|[1-9][0-9]{0,17})(\\.[0-9]{1,2})?$",
-              "description": "Exact decimal string, never JavaScript floating point or inferred exchange conversion."
-            },
-            "properties": {
-              "purchase": {
-                "type": "string",
-                "pattern": "^(0|[1-9][0-9]{0,17})(\\.[0-9]{1,2})?$",
-                "description": "Exact decimal string, never JavaScript floating point or inferred exchange conversion."
-              },
-              "taxes": {
-                "type": "string",
-                "pattern": "^(0|[1-9][0-9]{0,17})(\\.[0-9]{1,2})?$",
-                "description": "Exact decimal string, never JavaScript floating point or inferred exchange conversion."
-              },
-              "fees": {
-                "type": "string",
-                "pattern": "^(0|[1-9][0-9]{0,17})(\\.[0-9]{1,2})?$",
-                "description": "Exact decimal string, never JavaScript floating point or inferred exchange conversion."
-              },
-              "installation": {
-                "type": "string",
-                "pattern": "^(0|[1-9][0-9]{0,17})(\\.[0-9]{1,2})?$",
-                "description": "Exact decimal string, never JavaScript floating point or inferred exchange conversion."
-              },
-              "improvements": {
-                "type": "string",
-                "pattern": "^(0|[1-9][0-9]{0,17})(\\.[0-9]{1,2})?$",
-                "description": "Exact decimal string, never JavaScript floating point or inferred exchange conversion."
-              },
-              "other": {
-                "type": "string",
-                "pattern": "^(0|[1-9][0-9]{0,17})(\\.[0-9]{1,2})?$",
-                "description": "Exact decimal string, never JavaScript floating point or inferred exchange conversion."
-              }
-            }
+            "$ref": "#/components/schemas/CostComponents"
           }
-        }
+        },
+        "required": [
+          "method",
+          "effectiveOn",
+          "costs"
+        ]
       },
       "OwnershipInterestRequest": {
         "type": "object",
         "additionalProperties": false,
-        "required": [
-          "dimension",
-          "partyRef",
-          "effectiveFrom"
-        ],
         "properties": {
           "dimension": {
             "type": "string",
@@ -1990,25 +3554,39 @@
           "partyRef": {
             "type": "string",
             "minLength": 1,
-            "maxLength": 140
+            "maxLength": 90
+          },
+          "partyLabel": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 120
           },
           "percentage": {
             "oneOf": [
               {
-                "type": "number",
-                "minimum": 0,
-                "maximum": 100
+                "$ref": "#/components/schemas/MoneyString"
               },
               {
                 "type": "null"
               }
             ]
           },
-          "effectiveFrom": {
+          "effectiveOn": {
             "type": "string",
             "format": "date"
+          },
+          "note": {
+            "type": "string",
+            "maxLength": 400
           }
-        }
+        },
+        "required": [
+          "dimension",
+          "partyRef",
+          "partyLabel",
+          "percentage",
+          "effectiveOn"
+        ]
       },
       "ValuationRequest": {
         "type": "object",
@@ -2527,6 +4105,266 @@
           },
           "authenticated": {
             "type": "boolean"
+          }
+        }
+      },
+      "CostComponents": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "purchase": {
+            "$ref": "#/components/schemas/MoneyString"
+          },
+          "taxes": {
+            "$ref": "#/components/schemas/MoneyString"
+          },
+          "fees": {
+            "$ref": "#/components/schemas/MoneyString"
+          },
+          "installation": {
+            "$ref": "#/components/schemas/MoneyString"
+          },
+          "improvements": {
+            "$ref": "#/components/schemas/MoneyString"
+          },
+          "other": {
+            "$ref": "#/components/schemas/MoneyString"
+          }
+        },
+        "required": []
+      },
+      "LifecycleCommand": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "action": {
+            "type": "string",
+            "enum": [
+              "START_ACQUISITION",
+              "ACTIVATE",
+              "SUSPEND",
+              "REACTIVATE",
+              "ARCHIVE"
+            ]
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 400
+          }
+        },
+        "required": [
+          "action",
+          "reason"
+        ]
+      },
+      "OwnershipTransferRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "sourceInterestId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "toPartyRef": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 90
+          },
+          "toPartyLabel": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 120
+          },
+          "percentage": {
+            "$ref": "#/components/schemas/MoneyString"
+          },
+          "effectiveOn": {
+            "type": "string",
+            "format": "date"
+          },
+          "note": {
+            "type": "string",
+            "maxLength": 400
+          }
+        },
+        "required": [
+          "sourceInterestId",
+          "toPartyRef",
+          "toPartyLabel",
+          "percentage",
+          "effectiveOn"
+        ]
+      },
+      "DispositionRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "SALE",
+              "TRANSFER",
+              "DONATION",
+              "WRITE_OFF",
+              "DESTRUCTION",
+              "TRADE",
+              "OTHER"
+            ]
+          },
+          "effectiveOn": {
+            "type": "string",
+            "format": "date"
+          },
+          "proceeds": {
+            "$ref": "#/components/schemas/MoneyString"
+          },
+          "costs": {
+            "$ref": "#/components/schemas/MoneyString"
+          },
+          "counterpartyLabel": {
+            "type": "string",
+            "maxLength": 120
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 400
+          },
+          "confirm": {
+            "type": "string",
+            "const": "DISPOSE"
+          }
+        },
+        "required": [
+          "kind",
+          "effectiveOn",
+          "proceeds",
+          "costs",
+          "reason",
+          "confirm"
+        ]
+      },
+      "LifecycleSnapshot": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "asset": {
+            "$ref": "#/components/schemas/Asset"
+          },
+          "transitions": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            }
+          },
+          "acquisition": {
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "ownershipInterests": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            }
+          },
+          "ownershipChanges": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            }
+          },
+          "disposition": {
+            "type": [
+              "object",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "asset",
+          "transitions",
+          "acquisition",
+          "ownershipInterests",
+          "ownershipChanges",
+          "disposition"
+        ]
+      },
+      "LifecycleCommandResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "asset": {
+            "$ref": "#/components/schemas/Asset"
+          },
+          "action": {
+            "type": "string",
+            "enum": [
+              "START_ACQUISITION",
+              "ACTIVATE",
+              "SUSPEND",
+              "REACTIVATE",
+              "ARCHIVE"
+            ]
+          },
+          "acquisition": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "interest": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "transfer": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "disposition": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "ownershipEventId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "required": [
+          "asset"
+        ]
+      },
+      "DomainHistoryPage": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "items",
+          "nextCursor",
+          "limit"
+        ],
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": true
+            }
+          },
+          "nextCursor": {
+            "oneOf": [
+              {
+                "type": "string",
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100
           }
         }
       }
