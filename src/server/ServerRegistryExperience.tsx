@@ -2,12 +2,14 @@ import {useEffect,useRef,useState,type FormEvent} from 'react'
 import {ArrowLeft,ArrowRight,CheckCircle2,KeyRound,LockKeyhole,Plus,RefreshCw,ShieldAlert} from 'lucide-react'
 import {type AuthState,type ServerAsset,type PageResult,ServerError,serverRequest} from './identity'
 import './server-registry.css'
+import {ServerLifecycleExperience} from './ServerLifecycleExperience'
 
 type Props={
  path:string;auth:AuthState;signIn:()=>Promise<void>;logout:()=>void;
  selectMembership:(tenant:string)=>Promise<void>;navigate:(path:string)=>void
 }
 const root='server-registry'
+const lifecycleRoute=(id:string)=>root+'/asset/'+encodeURIComponent(id)+'/lifecycle'
 const canWrite=(auth:AuthState)=>auth.membership?.role==='WORKSPACE_OWNER'||auth.membership?.role==='OPERATIONS'
 const assetRoute=(id:string)=>root+'/asset/'+encodeURIComponent(id)
 const humanError=(e:unknown)=>e instanceof ServerError?
@@ -131,7 +133,10 @@ function RegistryData({auth,path,navigate}:{auth:AuthState;path:string;navigate:
     <dt>Description</dt><dd>{asset.description||'None'}</dd>
     <dt>Server record ID</dt><dd>{asset.id}</dd>
    </dl>
-   {canWrite(auth)&&<button className="primary-button" onClick={()=>navigate(assetRoute(asset.id)+'/edit')}>Edit asset <ArrowRight size={16}/></button>}
+   <div className="server-actions">
+    <button className="primary-button" onClick={()=>navigate(lifecycleRoute(asset.id))}><LockKeyhole size={16}/> Lifecycle, acquisition & ownership</button>
+    {canWrite(auth)&&<button className="secondary-button" onClick={()=>navigate(assetRoute(asset.id)+'/edit')}>Edit asset <ArrowRight size={16}/></button>}
+   </div>
   </section>
  }
  return <section className="server-panel">
@@ -163,15 +168,18 @@ export function ServerRegistryExperience({path,auth,signIn,logout,selectMembersh
   finally{setVerifying(false)}
  }
  return <div className="server-registry">
-  <div className="page-intro"><div><span className="eyebrow">B1.1 · TRUSTED SERVER REGISTRY</span><h1>Secure Asset Registry</h1><p>Verified sign-in and server-side tenant authority. Kept separate from the illustrative browser workspace.</p></div>
+  <div className="page-intro"><div><span className="eyebrow">B2.1 · TRUSTED SERVER REGISTRY & LIFECYCLE</span><h1>Secure Asset Registry</h1><p>Verified sign-in and server-side tenant authority. Kept separate from the illustrative browser workspace.</p></div>
    <div className="page-actions"><span className={'server-status server-'+auth.phase}>{auth.phase==='signedIn'?'Verified tenant':auth.phase==='disabled'?'Not configured':auth.phase==='loading'?'Checking configuration':auth.phase==='tokenReady'?'Verify membership':'Not signed in'}</span>{auth.token&&<button className="secondary-button" type="button" onClick={logout}>Sign out</button>}</div>
   </div>
-  <div className="server-boundary"><LockKeyhole size={20}/><p><strong>Data boundary:</strong> no sample records are sent to the API. Access tokens exist only in memory and expire; reload requires a new OIDC sign-in. No cross-OS schedule, ledger, lifecycle or owner transfer writes are enabled.</p></div>
+  <div className="server-boundary"><LockKeyhole size={20}/><p><strong>Data boundary:</strong> no sample records are sent to the API. Access tokens exist only in memory and expire; reload requires a new OIDC sign-in. The authenticated backend supports lifecycle and recorded ownership transfers; no cross-OS schedule, ledger posting or externally verified legal transfer is enabled.</p></div>
   {auth.phase==='loading'&&<section className="server-panel"><p role="status">Loading public connection settings…</p></section>}
   {auth.phase==='disabled'&&<section className="server-panel server-intro"><ShieldAlert size={29}/><h2>Production identity is not activated</h2><p>Configure a trusted HTTPS OIDC issuer, browser public client, API endpoint, audience and CORS allowlist. The GitHub Pages preview will not invent a login or tenant.</p><button className="secondary-button" type="button" onClick={()=>navigate('assets')}>Use clearly labeled browser preview <ArrowRight size={16}/></button></section>}
   {auth.phase==='error'&&<section className="server-panel"><p className="server-error" role="alert">{auth.error}</p><button className="secondary-button" onClick={()=>location.reload()}>Restart secure sign-in</button></section>}
   {auth.phase==='signedOut'&&<section className="server-panel server-intro"><KeyRound size={30}/><h2>Connect through your trusted identity provider</h2><p>Authorization Code + PKCE (S256). No password collection in Asset OS. The identity provider must be approved and tenant membership must already exist.</p><button className="primary-button" type="button" onClick={()=>void signIn()}>Sign in securely <ArrowRight size={16}/></button></section>}
   {auth.phase==='tokenReady'&&<section className="server-panel"><h2>Verify your tenant membership</h2><p>Sign-in succeeded. Enter the tenant UUID created by privileged owner enrollment. The backend will verify the active issuer/subject binding and role.</p><form className="server-membership" onSubmit={e=>void submitTenant(e)}><label>Tenant UUID<input aria-label="Tenant UUID" required value={tenantDraft} onChange={e=>setTenantDraft(e.target.value)} placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"/></label><button className="primary-button" disabled={verifying} type="submit">{verifying?'Verifying…':'Verify membership'}</button></form>{(auth.error||error)&&<p className="server-error" role="alert">{error||auth.error}</p>}</section>}
-  {auth.phase==='signedIn'&&<><div className="server-member"><CheckCircle2 size={17}/><strong>{auth.membership?.role.replaceAll('_',' ')}</strong><span>Issuer-verified tenant session · expires automatically</span><button onClick={()=>{logout()}}>Change tenant</button></div><RegistryData key={auth.tenantId+'|'+path} path={path} auth={auth} navigate={navigate}/></>}
+  {auth.phase==='signedIn'&&<><div className="server-member"><CheckCircle2 size={17}/><strong>{auth.membership?.role.replaceAll('_',' ')}</strong><span>Issuer-verified tenant session · expires automatically</span><button onClick={()=>{logout()}}>Change tenant</button></div>{(/^server-registry\/asset\/[0-9a-f-]{36}\/lifecycle$/i.test(path))
+   ?<ServerLifecycleExperience key={auth.tenantId+'|'+path} auth={auth} assetId={path.split('/')[2]} navigate={navigate}/>
+   :<RegistryData key={auth.tenantId+'|'+path} path={path} auth={auth} navigate={navigate}/>}
+</>}
  </div>
 }
