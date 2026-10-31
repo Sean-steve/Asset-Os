@@ -16,7 +16,6 @@ const idRegex=/^server-registry\/asset\/([0-9a-f-]{36})\/lifecycle$/i
 const note=(error:unknown)=>error instanceof ServerError?error.code+': '+error.message:
   error instanceof Error?error.message:'Server request failed; no local preview was substituted.'
 const today=()=>new Date().toISOString().slice(0,10)
-const base='server-registry/lifecycle'
 const assetUrl=(id:string)=>'server-registry/asset/'+id
 const detailUrl=(id:string)=>assetUrl(id)+'/lifecycle'
 const dimensions=['ECONOMIC','BENEFICIAL','LEGAL','CONTROL'] as const
