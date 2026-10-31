@@ -1,4 +1,4 @@
-/** Canonical 60-screen inventory. Phases 1–5 (01–50) implemented as frontend workflows. */
+/** Canonical 60-screen inventory. Phases 1–6 (01–60) implemented as frontend workflows. */
 export const phaseNames = [
   'Dashboard & Asset Registry',
   'Lifecycle, Acquisition & Ownership',
@@ -19,6 +19,6 @@ export const screens = [
   id: phaseIndex * 10 + screenIndex + 1,
   phase: phaseIndex + 1,
   title,
-  status: phaseIndex<5 ? 'implemented' as const : 'planned' as const,
+  status: phaseIndex<6 ? 'implemented' as const : 'planned' as const,
 })))
 export const phaseScreenCount = 10

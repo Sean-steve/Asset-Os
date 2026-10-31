@@ -1,6 +1,6 @@
 # Asset OS — Screen Implementation Matrix
 
-**Total:** 60 screens (60 principal product experiences). Phases 1–5 (Screens 01–50) are implemented as a frontend prototype; no backend, production data or Kernel integration is connected.
+**Total:** 60 screens (60 principal product experiences). Phases 1–6 (Screens 01–60) are implemented as a frontend prototype; no backend, production data or Kernel integration is connected.
 
 | Phase | Screen IDs | Feature area | Current status |
 | --- | --- | --- | --- |
@@ -10,7 +10,7 @@
 | 3 | 21–30 | Draft/review valuations, history, financing terms and observations, income/expenses, cash flow, ROI and reconciliation | **Implemented (frontend-only)** |
 | 4 | 31–40 | Maintenance plans/jobs, insurance and renewals, utilization, evidence, locations, relationships and operational calendar | **Implemented (frontend-only)** |
 | 5 | 41–50 | Portfolio directory/details, allocation, comparison, performance, assessed risk, watchlist, scenario sensitivities and guided intelligence | **Implemented (frontend-only)** |
-| 6 | 51–60 | Kernel integration and administration | Planned |
+| 6 | 51–60 | Wealth projection; Kernel drafts; local reminders; reports; disconnected integrations; team/role design; audit boundaries; preferences; onboarding | **Implemented (frontend-only)** |
 | 7 | All | Cross-role and responsive experience certification | Planned |
 
 ## Phase 1 route map
@@ -146,6 +146,36 @@
 - Intelligence assistant must identify itself as an offline guided rule explainer, not a connected AI model.
 - No autonomous sales, trades, transfers, Finance OS ledger posting, Kernel tasks or high-impact user decisions.
 - All ten screens navigable from the sidebar or roadmap, with empty, populated and error states.
+
+## Phase 6 route contracts
+
+| Screen | Route | Scope and authority |
+| --- | --- | --- |
+| 51 Net Worth / Wealth OS | `#/wealth-interface` | Minimal single-currency projection; unknown debt stays unknown; no Wealth OS transport |
+| 52 Kernel Action Center | `#/kernel-actions` | Draft, review, dismiss local action candidates; no Kernel schedule/task change |
+| 53 Notifications | `#/notifications` | Derived local reminder cards, acknowledge/snooze/reset; no real delivery |
+| 54 Reports and Exports | `#/reports` | Allowlisted, formula-safe, downloaded local CSV, without sensitive owner/document fields |
+| 55 Integration Hub | `#/integrations` | Six systems all NOT_CONNECTED, explicit contract prerequisites |
+| 56 Integration Detail | `#/integrations/:SYSTEM_ID` | Read/write ownership, planning notes only, no credential form or fake connection |
+| 57 Team and Access | `#/team-access` | Future role descriptions, no login/invite/authorization |
+| 58 Security/Audit | `#/security-audit` | Local mutable domain event history, NOT an authoritative security audit |
+| 59 Workspace Settings | `#/settings` | Local-only reporting currency, horizon, display role, notification/onboarding flags |
+| 60 Onboarding | `#/onboarding` | Honest progress from local records, excluding five synthetic starter assets |
+
+### Phase 6 acceptance criteria
+
+- All 60 principal screens present and navigable, while distinguishing *frontend complete* from *production ready*.
+- Migrate v1–v5 snapshots to v6 without losing earlier asset/owner/finance/portfolio/operations data.
+- Never aggregate across currencies or infer an unknown outstanding debt as a posted zero liability.
+- Keep Wealth handoff a **read-only minimum-necessary, untransmitted contract preview**.
+- Kernel action cards are **draft-only** and cannot write Personal Kernel schedules or Mission OS tasks.
+- Local alerts depend on real entered dates/flags, obey local reminder preferences and never claim push delivery.
+- Client-generated exports use an explicit field allowlist, formula-safe CSV and an empty-state on no data; never claim server-side permission enforcement.
+- All provider adapters remain disconnected even after an integration planning note is recorded.
+- Team/role selection never grants real access and cannot masquerade as identity or permission management.
+- Local activity is not an authoritative or tamper-proof audit log; privacy/security future requirements are explicit.
+- No real identity, API credentials, sensitive documents, external transfer, network mutation, payments, notifications or AI responses invented by the preview.
+- Empty, loading-free, populated, validation/error and responsive states are available. Browser rendering and cross-role UX certification remain Phase 7.
 
 ## Functional acceptance
 

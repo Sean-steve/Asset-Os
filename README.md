@@ -1,6 +1,6 @@
 # Asset OS — Personal Kernel Asset Intelligence
 
-**Status: Phase 5 — Portfolio, Performance & Intelligence frontend implemented.** No production assets, identity, finance records or Kernel services are connected. The five starter assets are synthetic. New edits, acquisition, ownership and disposition records are stored only in your browser. Income/expenses now derive from manually entered browser records; trend lines and alerts remain **demo data**.
+**Status: Phase 6 — Kernel Integration & Administration frontend implemented (60/60 screens).** No production assets, identity, finance records or Kernel services are connected. The five starter assets are synthetic. New edits, acquisition, ownership and disposition records are stored only in your browser. Income/expenses now derive from manually entered browser records; trend lines and alerts remain **demo data**.
 
 ## Stack
 - React 19 + TypeScript
@@ -173,6 +173,42 @@ The next **10 connected frontend experiences (Screens 31–40)** are implemented
 - The prototype is untrusted browser-local state, not a secure multi-tenant backend. Do not enter sensitive financial accounts, identity documents, passwords or actual private ownership/insurance data.
 - Actual governed intelligence, Wealth OS projection authority, Kernel identity, audit, permissions, real forecasting and production certification remain future work.
 
+## Phase 6 — Kernel Integration & Administration (Screens 51–60)
+
+All **60 / 60 primary frontend screens** now have navigable experiences. Phase 6 establishes **safe client-side projections and non-authoritative integration contracts**, NOT functioning secure identity or cross-engine services.
+
+| ID | Screen | Hash route | Present functionality |
+| --- | --- | --- | --- |
+| 51 | Net Worth & Wealth OS Interface | `#/wealth-interface` | Per-currency held-asset value, observed debt, incomplete-debt state and **never-transmitted** Wealth handoff preview |
+| 52 | Personal Kernel Action Center | `#/kernel-actions` | Derive candidates from real operational dates; draft, review or dismiss *local-only* proposals |
+| 53 | Notifications & Reminders | `#/notifications` | Derive local alerts, acknowledge, snooze and reset; no background delivery |
+| 54 | Reports & Exports | `#/reports` | Preview/locally export narrow CSV summaries; formula-safe cell escaping and field allowlists |
+| 55 | Integration Hub | `#/integrations` | Six documented contracts, all **NOT CONNECTED** |
+| 56 | Integration Connection Details | `#/integrations/:SYSTEM_ID` | Authority/direction/prerequisite review, record/withdraw a planning intent; no OAuth, credentials or handshake |
+| 57 | Team & Access Management | `#/team-access` | Four *design-preview* role profiles and abilities; no user invitations, sessions or enforced authorization |
+| 58 | Security & Audit Center | `#/security-audit` | Search/filter local event history with explicit warning it is mutable and **not** a security audit log |
+| 59 | Workspace Settings | `#/settings` | Browser reporting-currency preference, local reminder horizon, display-role preview, reminders and onboarding preferences |
+| 60 | Onboarding & Empty-State Experience | `#/onboarding` | Progress checklist from user-entered facts, not synthetic data |
+
+### Phase 6 workflows
+
+1. Inspect the Wealth preview. The report is single-currency and counts only held assets. Unknown facility balances yield **unknown indicative net equity**; missing external obligations and assets prevent claiming consolidated net worth. The JSON contract is not sent to Wealth OS.
+2. From a maintenance, service, insurance or evidence date, create a **local Kernel proposal**; mark it reviewed/dismissed. Never mutate Personal Kernel scheduling, create Mission OS tasks or send provider requests.
+3. Review local reminder cards (within selected 7/30/90 day horizon plus overdue), acknowledge or snooze. The header badge is computed from actual unread local records; no fixed demo count.
+4. Preview a minimal asset, operations or portfolio report and download a formula-safe CSV, explicitly excluding owner data, evidence references, policy references and sensitive details. Exports are locally generated in the browser, not server-authorized.
+5. Inspect contracts for **Personal Kernel, Wealth OS, Finance OS, Mission OS, Knowledge OS and Notifications**. All show *NOT CONNECTED*. Recording a planning intent never authorizes a network connection.
+6. Inspect future workspace roles. A selected preview role is **not** an actual logged-in user, access grant, route gate, object authorization or secure-team invitation.
+7. Review local activity and safety requirements, adjust browser preferences and use the onboarding checklist. Progress reflects only user-entered records; starter sample assets do not count.
+
+### Data safety and migration
+
+- Schema v6 extends `RegistryState` with `phase6` local settings, integration-planning notes, local action drafts and alert preferences.
+- v1–v5 browser snapshots migrate to v6 with Phase 1–5 asset IDs, acquisition/ownership history, valuations, financing, operations and portfolio/intelligence records preserved.
+- Existing localStorage key is retained; this does not make it encrypted or access-controlled. There are **no real credentials, login sessions, tenant identities, external events, server financial ledgers, push/email/SMS delivery, secure exports or append-only audit logs**.
+- Source: `src/governance/core.ts`, `src/governance/GovernanceExperience.tsx`, `src/governance/governance.css`; verification: `tests/governance.test.mjs`.
+
+**Delivery boundary:** 60/60 **frontend screen experiences** is not production-grade Asset OS completion. Backend authority, Personal Kernel identity binding, persistent database, secure provider adapters, governance enforcement, real AI/forecasting and full browser/end-to-end certification remain outstanding. Phase 7 will focus on frontend certification; backend development is separate.
+
 ## GitHub Pages
 The Vite deployment base is `/Asset-Os/`. The Actions workflow is `.github/workflows/pages.yml`.
 
@@ -194,7 +230,7 @@ Asset OS owns asset-domain state. Finance OS owns the posted financial ledger, a
 | 3 — Valuation, financing and economics (21–30) | **Implemented (frontend-only)** |
 | 4 — Operations and protection (31–40) | **Implemented (frontend-only)** |
 | 5 — Portfolio and intelligence (41–50) | **Implemented (frontend-only)** |
-| 6 — Kernel integration and administration (51–60) | Planned |
+| 6 — Kernel integration and administration (51–60) | **Implemented (frontend-only; integrations disconnected)** |
 | 7 — UI certification | Planned |
 
 See [screen inventory](docs/SCREEN_MATRIX.md). A screen is complete only after its route, interactions, responsive states and tests exist; a placeholder does not count.
@@ -234,3 +270,8 @@ Do not commit credentials or personal runtime data to this public repository.
 - `src/intelligence/IntelligenceExperience.tsx` — Screens 41–50 in the shared premium UI
 - `src/intelligence/intelligence.css` — responsive Phase 5 visual components
 - `tests/intelligence.test.mjs` — provenance, migrations, safety and formula regression tests
+
+- `src/governance/core.ts` — read-only Wealth handoff, kernel proposal drafts, local alerts, export-safe reports, planning intents, design roles and onboarding contracts
+- `src/governance/GovernanceExperience.tsx` — Phase 6 screens 51–60
+- `src/governance/governance.css` — premium responsive Phase 6 visual system
+- `tests/governance.test.mjs` — cross-phase migration, financial safety and non-authority regression tests

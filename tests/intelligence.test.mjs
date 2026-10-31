@@ -27,8 +27,8 @@ const flow=(s,id,type,amount,category,occurredOn='2026-10-20')=>recordFlow(s,{as
 test('screens 41–50 are declared implemented and Phase 6 remains planned',()=>{
  assert.equal(screens.length,60)
  assert.deepEqual(screens.slice(40,50).map(s=>s.id),[41,42,43,44,45,46,47,48,49,50])
- assert.equal(screens.filter(s=>s.status==='implemented').length,50)
- assert.equal(screens.filter(s=>s.status==='planned').length,10)
+ assert.equal(screens.filter(s=>s.status==='implemented').length,60)
+ assert.equal(screens.filter(s=>s.status==='planned').length,0)
  const ui=readFileSync(new URL('../src/intelligence/IntelligenceExperience.tsx',import.meta.url),'utf8')
  for(const r of ['portfolios','portfolio/','allocation','comparison','performance','risk-center','risk/new','underperforming','scenarios','intelligence'])assert.ok(ui.includes("'"+r+"'")||ui.includes("'"+r),r)
 })
@@ -38,12 +38,13 @@ test('v1-v4 storage snapshots migrate to v5 preserving earlier phase arrays and 
  const v=recordValuation(p,{assetId:id,date:'2026-10-10',amount:1300,method:'MANUAL_ESTIMATE',source:'Local',confidence:'LOW',notes:''},AT)
  for(const version of [1,2,3,4]){
   const legacy=structuredClone(v);legacy.version=version
+  if(version<6)delete legacy.phase6
   if(version<5)delete legacy.phase5
   if(version<4)delete legacy.phase4
   if(version<3)delete legacy.phase3
   if(version<2)delete legacy.phase2
   const result=loadRegistry({getItem:key=>{assert.equal(key,STORE_KEY);return JSON.stringify(legacy)}})
-  assert.equal(result.version,5)
+  assert.equal(result.version,6)
   assert.equal(result.records[0].id,id)
   assert.deepEqual(result.phase5,emptyIntelligenceData())
   if(version>=2)assert.equal(result.phase2.acquisitions.length,1)
@@ -51,7 +52,7 @@ test('v1-v4 storage snapshots migrate to v5 preserving earlier phase arrays and 
   if(version>=4)assert.equal(result.phase4.plans.length,1)
   const saved=new Map()
   assert.equal(saveRegistry(result,{setItem:(k,text)=>saved.set(k,text)}),true)
-  assert.equal(JSON.parse(saved.get(STORE_KEY)).version,5)
+  assert.equal(JSON.parse(saved.get(STORE_KEY)).version,6)
  }
 })
 test('seeded assets do not come with fabricated portfolios, risk assessments or model outputs',()=>{
