@@ -1,4 +1,5 @@
 import fastify from 'fastify'
+import {allowedBrowserOrigins,EXPOSE_HEADERS,METHODS,REQUEST_HEADERS,preflightAllowed} from './cors.js'
 import {readFileSync} from 'node:fs'
 import {randomUUID} from 'node:crypto'
 import type {Pool} from 'pg'
@@ -20,9 +21,29 @@ function header(value:string|string[]|undefined):string|undefined{
 }
 
 export function buildApp(pool:PoolPort,verifier:OidcVerifier|null=null){
+ const trustedOrigins=allowedBrowserOrigins(process.env)
  const app=fastify({
   logger:{redact:{paths:['req.headers.authorization','req.headers.cookie','res.headers.set-cookie'],censor:'[REDACTED]'}},
   bodyLimit:512*1024,trustProxy:false,requestIdHeader:false
+ })
+ app.addHook('onRequest',async(request,reply)=>{
+  const origin=typeof request.headers.origin==='string'?request.headers.origin:undefined
+  if(origin){
+   if(!trustedOrigins.has(origin))return reply.code(403).send({error:{code:'ORIGIN_NOT_ALLOWED',message:'Browser origin is not authorized.',requestId:request.id}})
+   reply.header('Vary','Origin')
+   reply.header('Access-Control-Allow-Origin',origin)
+   reply.header('Access-Control-Expose-Headers',EXPOSE_HEADERS)
+  }
+  if(request.method==='OPTIONS'){
+   if(!origin||!preflightAllowed(request.headers['access-control-request-headers'])||
+      !['GET','POST','PATCH','OPTIONS'].includes(request.headers['access-control-request-method']||'')){
+    return reply.code(403).send({error:{code:'CORS_PREFLIGHT_DENIED',message:'Browser preflight not allowed.',requestId:request.id}})
+   }
+   reply.header('Access-Control-Allow-Methods',METHODS)
+   reply.header('Access-Control-Allow-Headers',REQUEST_HEADERS.join(', '))
+   reply.header('Access-Control-Max-Age','600')
+   return reply.code(204).send()
+  }
  })
  app.addHook('onSend',async(_req,reply,payload)=>{
   reply.header('Cache-Control','no-store')
