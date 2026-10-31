@@ -77,7 +77,7 @@ test('registry totals are currency-scoped and do not convert other currencies',(
   const after=createAsset(before,{...asInput(before.records[0]),lifecycle:'PLANNED',currency:'USD',value:200,equity:175},today)
   assert.deepEqual(distinctCurrencies(after.records),['KES','USD'])
   assert.equal(sumInCurrency(after.records,'value','KES'),24850000)
-  assert.equal(sumInCurrency(after.records,'value','USD'),200)
+  assert.equal(sumInCurrency(after.records,'value','USD'),0) // PLANNED, not held\n  assert.equal(after.records.find(a=>a.currency==='USD').value,200)
 })
 
 test('adding and renaming tags updates all matching asset references',()=>{
