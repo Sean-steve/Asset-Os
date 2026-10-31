@@ -332,13 +332,37 @@ export async function lifecycleSnapshot(client:TenantSqlClient,tenantId:string,a
  return {asset,transitions:events.rows,acquisition:acquisition?{...acquisition,costs}:null,
   ownershipInterests:ownership.rows,ownershipChanges:changes.rows,disposition:dispositions.rows[0]||null}
 }
-export async function listDomainHistory(client:TenantSqlClient,tenantId:string,kind:'acquisitions'|'dispositions'){
- // Stable server-scoped cursor pagination in B2: received cursor is a UUID of last record.
+export async function listDomainHistory(
+ client:TenantSqlClient,tenantId:string,kind:'acquisitions'|'dispositions',query:unknown={}
+){
+ const validated=z.object({
+  limit:z.coerce.number().int().min(1).max(100).default(30),
+  cursor:z.string().max(512).optional()
+ }).strict().safeParse(query)
+ if(!validated.success)throw new ApiFault(400,'INVALID_QUERY','History listing query is invalid.')
+ const args=validated.data
  const table=kind==='acquisitions'?'acquisitions':'dispositions'
- const rows=await client.query('SELECT id,asset_id AS "assetId",'+
+ const params:unknown[]=[tenantId]
+ let where=' WHERE tenant_id=$1'
+ if(args.cursor){
+  let position:{recordedAt:string;id:string}
+  try{
+   const obj=JSON.parse(Buffer.from(args.cursor,'base64url').toString('utf8')) as unknown
+   position=z.object({recordedAt:z.iso.datetime({offset:true}),id:Uuid}).strict().parse(obj)
+  }catch{throw new ApiFault(400,'INVALID_CURSOR','History cursor is invalid.')}
+  params.push(position.recordedAt,position.id)
+  where+=' AND (recorded_at,id)<($2::timestamptz,$3::uuid)'
+ }
+ params.push(args.limit+1)
+ const rows=(await client.query('SELECT id,asset_id AS "assetId",'+
    (kind==='acquisitions'?'method':'kind')+
-   ',currency,to_char(effective_on,\'YYYY-MM-DD\') AS "effectiveOn",recorded_at AS "recordedAt" FROM asset_os.'+
-   table+' WHERE tenant_id=$1 ORDER BY recorded_at DESC,id DESC LIMIT 101',[tenantId])
- return {items:rows.rows.slice(0,100),hasMore:rows.rows.length>100,
-  note:rows.rows.length>100?'Only first 100 entries returned in B2; use per-asset history for older evidence.':undefined}
+   ",currency,to_char(effective_on,'YYYY-MM-DD') AS \"effectiveOn\","+
+   'recorded_at AS "recordedAt" FROM asset_os.'+table+where+
+   ' ORDER BY recorded_at DESC,id DESC LIMIT $'+params.length,params)).rows as
+   Array<{id:string;recordedAt:Date}&Record<string,unknown>>
+ const selected=rows.slice(0,args.limit)
+ const last=selected.at(-1)
+ const nextCursor=rows.length>args.limit&&last?
+  Buffer.from(JSON.stringify({recordedAt:new Date(last.recordedAt).toISOString(),id:last.id})).toString('base64url'):null
+ return {items:selected,nextCursor,limit:args.limit}
 }

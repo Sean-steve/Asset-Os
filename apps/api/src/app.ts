@@ -139,9 +139,9 @@ export function buildApp(pool:PoolPort,verifier:OidcVerifier|null=null){
  app.get('/v1/assets/:assetId/disposition',async req=>
   authorized(req,'read',async(client,member)=>(await lifecycleSnapshot(client,member.tenantId,(req.params as {assetId:string}).assetId)).disposition))
  app.get('/v1/acquisitions',async req=>
-  authorized(req,'read',async(client,member)=>listDomainHistory(client,member.tenantId,'acquisitions')))
+  authorized(req,'read',async(client,member)=>listDomainHistory(client,member.tenantId,'acquisitions',req.query)))
  app.get('/v1/dispositions',async req=>
-  authorized(req,'read',async(client,member)=>listDomainHistory(client,member.tenantId,'dispositions')))
+  authorized(req,'read',async(client,member)=>listDomainHistory(client,member.tenantId,'dispositions',req.query)))
  app.post('/v1/assets/:assetId/lifecycle-actions',async(req,reply)=>{
   const h=b2Headers(req)
   const result=await authorized(req,'write',async(client,member,requestId)=>

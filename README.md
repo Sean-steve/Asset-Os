@@ -1,6 +1,12 @@
 # Asset OS — Personal Kernel Asset Intelligence
 
-**Frontend: Phase 7 certified — 60/60 screen experiences. Backend: Phase B1 verified OIDC/tenant membership and PostgreSQL Asset Registry API implemented (provider credentials not configured).** This is a browser-local prototype, not a production backend. Five starter assets are clearly illustrative; user-entered asset, ownership, finance, operation and portfolio changes persist in local browser storage only. Dashboard valuation history and operational alerts now derive only from recorded data, with honest empty states rather than synthetic activity.
+**Frontend: Phase 7 certified — 60/60 screen experiences. Backend: Phase B2 lifecycle, acquisition, ownership and disposition PostgreSQL services implemented (live identity and backend deployment still unconfigured).** The hosted Pages frontend remains a browser-local preview outside the separate Secure Registry. Five starter assets are clearly illustrative; user-entered asset, ownership, finance, operation and portfolio changes persist in local browser storage only. Dashboard valuation history and operational alerts now derive only from recorded data, with honest empty states rather than synthetic activity.
+
+## Phase B2 — PostgreSQL Lifecycle, Acquisition & Ownership
+
+Backend B2 implements guarded lifecycle transitions, initial acquisitions, itemized cost basis, effective-dated economic/beneficial ownership and non-percentage legal/control claims, partial transfers, disposition and terminal archival. Verified tenant membership, ETag concurrency, idempotency, audit and PENDING outbox events are mandatory.
+
+**B2 does not connect the browser-local Phase 2 frontend to these APIs.** The hosted frontend remains a preview; no production OIDC issuer, API server, Finance OS posting, money transfer or legal-title validation is active. See [Backend B2 Technical Guide](docs/BACKEND_B2.md) and [OpenAPI](apps/api/openapi/openapi.json).
 
 ## Phase B1.1 — Secure Registry Frontend Integration (provider activation pending)
 
