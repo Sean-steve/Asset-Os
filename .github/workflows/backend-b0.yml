@@ -1,0 +1,61 @@
+name: Asset OS Backend B0 Certification
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  postgres-contract-certification:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: asset_os
+          POSTGRES_USER: asset_os_owner
+          POSTGRES_PASSWORD: ci-only-owner-password
+        ports:
+          - 5435:5432
+        options: >-
+          --health-cmd "pg_isready -U asset_os_owner -d asset_os"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    env:
+      NODE_ENV: test
+      DATABASE_URL: postgresql://asset_os_app:ci-only-app-password@127.0.0.1:5435/asset_os
+      MIGRATION_DATABASE_URL: postgresql://asset_os_owner:ci-only-owner-password@127.0.0.1:5435/asset_os
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install separate API dependencies
+        run: npm --prefix apps/api install --no-audit --no-fund
+      - name: Strict backend compile and local contract tests
+        run: |
+          npm --prefix apps/api run typecheck
+          npm --prefix apps/api run test
+      - name: PostgreSQL client for verification
+        run: |
+          if ! command -v psql >/dev/null; then
+            sudo apt-get update -qq
+            sudo apt-get install -y -qq postgresql-client
+          fi
+      - name: Provision CI-only restricted runtime role
+        env:
+          PGPASSWORD: ci-only-owner-password
+        run: |
+          psql -h 127.0.0.1 -p 5435 -U asset_os_owner -d asset_os \
+            -v role_password=ci-only-app-password \
+            -f infra/scripts/create-runtime-role.sql
+      - name: Apply PostgreSQL schema and verify migration checksum
+        run: |
+          npm --prefix apps/api run migrate
+          npm --prefix apps/api run migrate:check
+      - name: Real Postgres isolation, constraints and API readiness
+        run: npm --prefix apps/api run test:db

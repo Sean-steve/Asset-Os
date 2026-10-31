@@ -1,0 +1,48 @@
+name: asset-os-b0
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: asset_os
+      POSTGRES_USER: asset_os_owner
+      POSTGRES_PASSWORD: ${ASSET_OS_OWNER_PASSWORD:?Set ASSET_OS_OWNER_PASSWORD}
+      ASSET_OS_APP_PASSWORD: ${ASSET_OS_APP_PASSWORD:?Set ASSET_OS_APP_PASSWORD}
+    volumes:
+      - asset_os_pgdata:/var/lib/postgresql/data
+      - ./scripts/init-db.sh:/docker-entrypoint-initdb.d/10-create-runtime-role.sh:ro
+      - ./scripts/create-runtime-role.sql:/opt/asset-os/create-runtime-role.sql:ro
+    ports:
+      - "127.0.0.1:${ASSET_OS_PG_PORT:-5435}:5432"
+    healthcheck:
+      test: ["CMD-SHELL","pg_isready -U asset_os_owner -d asset_os"]
+      interval: 5s
+      timeout: 4s
+      retries: 12
+  migrate:
+    build:
+      context: ../apps/api
+    command: ["node","dist/migrate.js"]
+    environment:
+      NODE_ENV: development
+      MIGRATION_DATABASE_URL: postgresql://asset_os_owner:${ASSET_OS_OWNER_PASSWORD:?Set ASSET_OS_OWNER_PASSWORD}@db:5432/asset_os
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: "no"
+  api:
+    build:
+      context: ../apps/api
+    restart: unless-stopped
+    environment:
+      NODE_ENV: development
+      HOST: 0.0.0.0
+      PORT: 3001
+      DATABASE_URL: postgresql://asset_os_app:${ASSET_OS_APP_PASSWORD:?Set ASSET_OS_APP_PASSWORD}@db:5432/asset_os
+    ports:
+      - "127.0.0.1:${ASSET_OS_API_PORT:-3001}:3001"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+volumes:
+  asset_os_pgdata:

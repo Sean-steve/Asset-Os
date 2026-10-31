@@ -1,6 +1,27 @@
 # Asset OS — Personal Kernel Asset Intelligence
 
-**Status: Phase 7 — Frontend certification complete (60/60 screen experiences).** This is a browser-local prototype, not a production backend. Five starter assets are clearly illustrative; user-entered asset, ownership, finance, operation and portfolio changes persist in local browser storage only. Dashboard valuation history and operational alerts now derive only from recorded data, with honest empty states rather than synthetic activity.
+**Frontend: Phase 7 certified — 60/60 screen experiences. Backend: Phase B0 PostgreSQL foundation implemented (no identity or live domain endpoints yet).** This is a browser-local prototype, not a production backend. Five starter assets are clearly illustrative; user-entered asset, ownership, finance, operation and portfolio changes persist in local browser storage only. Dashboard valuation history and operational alerts now derive only from recorded data, with honest empty states rather than synthetic activity.
+
+## Phase B0 — PostgreSQL backend and API contracts (31 October 2026)
+
+A separate **Fastify + TypeScript** service now lives in `apps/api`, with three PostgreSQL 16 migrations, forced tenant row-level security, restricted runtime/database-migration credentials, cross-tenant foreign keys, append-only runtime audit storage, outbox/inbox event structures, idempotency tables and a versioned OpenAPI 3.1 contract.
+
+**This is backend foundation only.** The hosted frontend still stores records locally and is **not** connected to PostgreSQL. The new API currently implements liveness, readiness, capability metadata and OpenAPI. All domain CRUD deliberately returns HTTP 503 `IDENTITY_NOT_CONFIGURED` until trusted Personal Kernel identity, tenancy and authorization are available in B1.
+
+- [Backend architecture, schema, security boundaries and local setup](docs/BACKEND_B0.md)
+- [OpenAPI v3.1 contract](apps/api/openapi/openapi.json) and [cross-OS event contracts](apps/api/openapi/events.json)
+- [Backend PostgreSQL certification workflow](.github/workflows/backend-b0.yml)
+
+Local test database and API can be started after configuring **private** development credentials:
+
+```bash
+cp infra/.env.example infra/.env
+# Replace placeholder passwords in infra/.env (not committed).
+docker compose --env-file infra/.env -f infra/docker-compose.yml up --build -d
+curl http://127.0.0.1:3001/health/ready
+```
+
+Next: **B1 — authenticated tenant/subject binding and server-authoritative Asset Registry**. Never import synthetic/localStorage records as trusted production holdings without explicit review and an authenticated migration.
 
 ## Phase 7 frontend release certification — 31 October 2026
 
@@ -10,7 +31,7 @@
 - Portfolio/category charts include user-created asset categories and exclude unknown financing balances from known-equity totals.
 - See [Phase 7 Certification Report](docs/PHASE_7_CERTIFICATION.md) and the [GitHub Actions checks](https://github.com/Sean-steve/Asset-Os/actions) for traceable evidence.
 
-**Not included:** production identity, server permissions, durable PostgreSQL, authenticated Finance/Wealth/Kernel integrations, real notifications, secure document storage, external AI, cross-browser visual review or a full WCAG audit. These require separate backend and preproduction work.
+**Not included in the certified frontend:** production identity, connected backend/data authority, authenticated Finance/Wealth/Kernel integrations, real notifications, secure document storage, external AI, cross-browser visual review or a full WCAG audit. These require separate backend and preproduction work.
 
 To run the browser gate locally, first install Chromium dependencies compatible with your OS and then run:
 
