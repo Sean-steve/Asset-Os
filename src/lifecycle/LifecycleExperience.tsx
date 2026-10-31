@@ -34,7 +34,7 @@ const url=(part:string,id:string)=>part+'/'+encodeURIComponent(id)
 function Header({number,title,subtitle,back,actions}:{
   number:string;title:string;subtitle:string;back?:()=>void;actions?:ReactNode
 }){
-  return <div className="p2-header"><div className="p2-headline">{back&&<button type="button" className="p2-back" aria-label="Back" onClick={back}><ArrowLeft size={18}/></button>}<div><span className="eyebrow">{number}</span><h1>{title}</h1><p>{subtitle}</p></div></div><div className="p2-heading-actions">{actions}</div></div>
+  return <div className="p2-header"><div className="p2-headline">{back&&<button type="button" className="p2-back" aria-label="Back" onClick={back}><ArrowLeft size={18}/></button>}<div><span className="eyebrow">{number}</span><h1>{title}</h1><p>{subtitle}</p></div></div><div className="p2-heading-actions"><a className="p2-server-route" href="#/server-registry"><LockKeyhole size={14}/> Authenticated lifecycle workspace <ArrowRight size={13}/></a>{actions}</div></div>
 }
 function Panel({title,children,extra,className=''}:{title:string;children:ReactNode;extra?:ReactNode;className?:string}){
   return <section className={'p2-panel '+className}><header><h2>{title}</h2>{extra}</header>{children}</section>
