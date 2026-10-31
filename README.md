@@ -1,6 +1,6 @@
 # Asset OS — Personal Kernel Asset Intelligence
 
-**Status: Phase 0 — frontend foundation.** No production assets, identity, finance records or Kernel services are connected. Every number shown in the preview is **demo data**.
+**Status: Phase 1 — Dashboard & Asset Registry frontend complete.** No production assets, identity, finance records or Kernel services are connected. The five starter assets are synthetic. New edits are stored only in your browser. Income/expenses, trend lines and alerts remain **demo data**.
 
 ## Stack
 - React 19 + TypeScript
@@ -29,6 +29,17 @@ npm run preview
 
 The project uses strict TypeScript, four built-in Node foundation checks and a Vite production build. Additional behavioral/end-to-end tests will follow screen implementation.
 
+## Phase 1 — browser-local workflows
+
+The main screens are available at `#/dashboard`, `#/assets`, `#/assets/new`, `#/classifications`, `#/tags`, `#/search`, `#/activity`, and `#/type-views`. Asset-specific routes are `#/asset/:id`, `#/asset/:id/edit`, and `#/asset/:id/type`.
+
+- Create/edit assets, classify them, manage tags, inspect detailed category information, filter and search, and view local activity.
+- Data is persisted in browser localStorage. No server synchronization, secure identities, authoritative valuations, transaction ledger, or cross-user isolation exists.
+- KES dashboard value and equity totals update from local assets. Other-currency assets are never converted silently.
+- The demo reset control deliberately requires confirmation and overwrites current browser records.
+- Financial trend, income, expenses and attention alerts are clearly labeled illustrative placeholders for later phases.
+- Do **not** put real confidential personal, legal, financial or ownership documents into this public prototype.
+
 ## GitHub Pages
 The Vite deployment base is `/Asset-Os/`. The Actions workflow is `.github/workflows/pages.yml`.
 
@@ -44,8 +55,8 @@ Asset OS owns asset-domain state. Finance OS owns the posted financial ledger, a
 
 | Milestone | State |
 | --- | --- |
-| 0 — Foundation | Implemented UI; publishing needs Pages setup |
-| 1 — Dashboard and registry (01–10) | Planned |
+| 0 — Foundation | Implemented and deployed |
+| 1 — Dashboard and registry (01–10) | **Implemented (frontend-only)** |
 | 2 — Lifecycle, acquisition and ownership (11–20) | Planned |
 | 3 — Valuation and economics (21–30) | Planned |
 | 4 — Operations and protection (31–40) | Planned |
@@ -65,3 +76,8 @@ See [screen inventory](docs/SCREEN_MATRIX.md). A screen is complete only after i
 - `.github/workflows/pages.yml` — Pages deployment
 
 Do not commit credentials or personal runtime data to this public repository.
+
+- `src/registry/core.ts` — browser-local registry domain, validation and storage
+- `src/registry/RegistryExperience.tsx` — 10 connected Phase 1 screen experiences
+- `src/registry/registry.css` — responsive Phase 1 styles
+- `tests/registry.test.mjs` — registry behaviors and persistence unit tests

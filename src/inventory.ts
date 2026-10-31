@@ -1,8 +1,4 @@
-/**
- * Authoritative UI route inventory derived from the approved 60-screen plan.
- * Only Phase 0 foundation views are implemented; planned screens must not be
- * presented as complete application features.
- */
+/** Canonical 60-screen inventory. Phase 1 (01–10) implemented as frontend workflows. */
 export const phaseNames = [
   'Dashboard & Asset Registry',
   'Lifecycle, Acquisition & Ownership',
@@ -23,7 +19,6 @@ export const screens = [
   id: phaseIndex * 10 + screenIndex + 1,
   phase: phaseIndex + 1,
   title,
-  status: 'planned' as const,
+  status: phaseIndex===0 ? 'implemented' as const : 'planned' as const,
 })))
-
 export const phaseScreenCount = 10
