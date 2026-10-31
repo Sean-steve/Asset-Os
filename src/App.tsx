@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
 import {
   Activity, ArrowRight, ArrowUpRight, BarChart3, Bell, BookOpen, CheckCircle2,
-  BriefcaseBusiness, Building2, CalendarDays, CarFront,
+  BriefcaseBusiness, Building2, CalendarDays, CarFront, Calculator, Receipt, Archive, Users,
   ChevronDown, ChevronRight, CircleHelp, Coins, Component,
   ExternalLink, FileText, Gauge, LayoutDashboard, Layers3, Menu,
   Moon, Plus, Search, Server, ShieldCheck, Sparkles,
@@ -10,10 +10,11 @@ import {
 } from 'lucide-react'
 import { activity, alerts, allocation, demoSummary, events, type Asset } from './demo'
 import { RegistryExperience } from './registry/RegistryExperience'
+import { LifecycleExperience } from './lifecycle/LifecycleExperience'
 import { loadRegistry, saveRegistry, sumInCurrency, type AssetRecord, type RegistryState } from './registry/core'
 import { phaseNames, screens } from './inventory'
 
-type Page = 'dashboard' | 'design' | 'roadmap' | 'planned' | 'registry'
+type Page = 'dashboard' | 'design' | 'roadmap' | 'planned' | 'registry' | 'lifecycle'
 type Period = '1M' | '3M' | '6M' | '1Y' | '5Y'
 type Palette = 'blue' | 'green' | 'violet' | 'orange' | 'red'
 
@@ -25,6 +26,11 @@ const nav: Array<{name: string; icon: LucideIcon; slug: string; phase: number}> 
   { name:'Advanced search',icon:Search,slug:'search',phase:1 },
   { name:'Asset activity',icon:Activity,slug:'activity',phase:1 },
   { name:'Type-specific views',icon:Layers3,slug:'type-views',phase:1 },
+  { name:'Acquisitions',icon:Receipt,slug:'acquisitions',phase:2 },
+  { name:'Cost basis',icon:Calculator,slug:'cost-basis',phase:2 },
+  { name:'Asset lifecycle',icon:Activity,slug:'lifecycle',phase:2 },
+  { name:'Ownership',icon:Users,slug:'ownership',phase:2 },
+  { name:'Disposition history',icon:Archive,slug:'dispositions',phase:2 },
   { name:'Portfolios',icon:Wallet,slug:'portfolios',phase:5 },
   { name:'Valuations',icon:TrendingUp,slug:'valuations',phase:3 },
   { name:'Income & Expenses',icon:Coins,slug:'income-expenses',phase:3 },
@@ -58,11 +64,11 @@ const short = (amount: number) => amount >= 1_000_000 ? 'KES ' + (amount / 1_000
 const go = (route: string) => { window.location.hash = '/' + route }
 const currentPath = () => decodeURIComponent(window.location.hash.replace(/^#\/?/, '')) || 'dashboard'
 const getPage = (path: string): Page =>
-  path === 'dashboard' ? 'dashboard' : path === 'design' ? 'design' : path === 'roadmap' ? 'roadmap' : /^(assets(?:\/new)?|asset\/|classifications$|tags$|search$|activity$|type-views$)/.test(path) ? 'registry' : 'planned'
+  path === 'dashboard' ? 'dashboard' : path === 'design' ? 'design' : path === 'roadmap' ? 'roadmap' : /^(assets(?:\/new)?|asset\/|classifications$|tags$|search$|activity$|type-views$)/.test(path) ? 'registry' : /^(acquisitions(?:\/|$)|cost-basis(?:\/|$)|lifecycle(?:\?|$)|ownership(?:\/|$)|dispose(?:\/|$)|dispositions(?:\/|$))/.test(path) ? 'lifecycle' : 'planned'
 const slug = (value: string) => value.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
 const toneFor = (tone: string) => 'tone-' + tone
 const currency = (amount:number,code:string) => new Intl.NumberFormat('en-KE',{maximumFractionDigits:2}).format(amount)+' '+code
-const viewAsset = (a:AssetRecord):Asset => ({id:a.id,name:a.name,category:a.category,subtype:a.subcategory,value:a.value,equity:a.equity,status:a.lifecycle==='ACTIVE'?'Active':a.lifecycle.split('_').map(s=>s[0]+s.slice(1).toLowerCase()).join(' '),icon:({ 'Real Estate':'building',Vehicles:'car',Investments:'chart',Business:'briefcase','Digital Assets':'server' } as Record<string,string>)[a.category]||'layers',color:({ 'Real Estate':'#478ffa',Vehicles:'#45cba4',Investments:'#f0bf63',Business:'#f58c63','Digital Assets':'#a384f5' } as Record<string,string>)[a.category]||'#95a9c9',currency:a.currency})
+const viewAsset = (a:AssetRecord):Asset => ({id:a.id,name:a.name,category:a.category,subtype:a.subcategory,value:a.value,equity:a.equity,status:a.lifecycle==='ACTIVE'?'Active':a.lifecycle.split('_').map(s=>s[0]+s.slice(1).toLowerCase()).join(' '),icon:({ 'Real Estate':'building',Vehicles:'car',Investments:'chart',Business:'briefcase','Digital Assets':'server' } as Record<string,string>)[a.category]||'layers',color:({ 'Real Estate':'#478ffa',Vehicles:'#45cba4',Investments:'#f0bf63',Business:'#f58c63','Digital Assets':'#a384f5' } as Record<string,string>)[a.category]||'#95a9c9',currency:a.currency,lifecycle:a.lifecycle})
 
 function Brand() {
   return <div className="brand">
@@ -126,7 +132,7 @@ function TrendChart({period,changePeriod}: {period:Period;changePeriod:(p:Period
 }
 
 function AllocationChart({items,onView}: {items:Asset[];onView:()=>void}) {
-  const kes=items.filter(a=>a.currency==='KES')
+  const kes=items.filter(a=>a.currency==='KES'&&a.lifecycle!=='DISPOSED'&&a.lifecycle!=='ARCHIVED')
   const total=kes.reduce((s,a)=>s+a.value,0)
   const segments=allocation.map(x=>({...x,value:kes.filter(a=>a.category===x.label).reduce((s,a)=>s+a.value,0)}))
   const boundaries=segments.reduce((acc,s)=>{const last=acc.length?acc[acc.length-1].end:0;const end=total>0?last+s.value/total*100:0;acc.push({...s,start:last,end});return acc},[] as Array<typeof segments[number]&{start:number;end:number}>)
@@ -140,7 +146,7 @@ function AllocationChart({items,onView}: {items:Asset[];onView:()=>void}) {
 function Performance({items,onView}: {items:Asset[];onView:()=>void}) {
   const [metric,setMetric]=useState<'Value'|'Equity'>('Value')
   const categories=allocation
-  const kes=items.filter(a=>a.currency==='KES')
+  const kes=items.filter(a=>a.currency==='KES'&&a.lifecycle!=='DISPOSED'&&a.lifecycle!=='ARCHIVED')
   const grand=kes.reduce((sum,a)=>sum+(metric==='Value'?a.value:a.equity),0)
   const series=categories.map(c=>kes.filter(a=>a.category===c.label).reduce((sum,a)=>sum+(metric==='Value'?a.value:a.equity),0))
   const maxima=Math.max(1,...series)
@@ -212,9 +218,9 @@ function Roadmap({onPhase,onRoute,firstAssetId}: {onPhase:(phase:number,title:st
   const [filter,setFilter]=useState<number | 'all'>('all')
   const matches=filter==='all'?screens:screens.filter(screen=>screen.phase===filter)
   return <div className="support-page"><div className="page-intro"><div><span className="eyebrow">DELIVERY TRACKER / AOS</span><h1>Screen roadmap</h1><p>Transparent progress across the complete 60-screen Asset OS experience.</p></div></div>
-    <div className="roadmap-hero"><div><span className="eyebrow">CURRENT MILESTONE</span><h2>Phase 1 — Dashboard & asset registry</h2><p>Ten connected frontend screens: working registry, asset details, create/edit, classification, tags, search, activity and category profiles. Browser-local only.</p></div><div className="roadmap-count"><strong>10<span>/60</span></strong><small>frontend screens delivered</small></div></div>
+    <div className="roadmap-hero"><div><span className="eyebrow">CURRENT MILESTONE</span><h2>Phase 2 — Lifecycle, acquisition & ownership</h2><p>Twenty connected frontend screens: guided acquisition, cost basis, ownership interests and transfers, guarded lifecycle changes, disposition and preserved history. Browser-local only.</p></div><div className="roadmap-count"><strong>20<span>/60</span></strong><small>frontend screens implemented</small></div></div>
     <div className="roadmap-filter" role="group" aria-label="Filter screens"><button type="button" className={filter==='all'?'active':''} aria-pressed={filter==='all'} onClick={()=>setFilter('all')}>All phases</button>{phaseNames.map((_,i)=><button type="button" key={i} className={filter===i+1?'active':''} aria-pressed={filter===i+1} onClick={()=>setFilter(i+1)}>Phase {i+1}</button>)}</div>
-    <div className="roadmap-list">{matches.map(screen=><button className="roadmap-item" type="button" key={screen.id} onClick={()=>screen.phase===1?onRoute((['dashboard','assets',firstAssetId?'asset/'+encodeURIComponent(firstAssetId):'assets/new','assets/new',firstAssetId?'asset/'+encodeURIComponent(firstAssetId)+'/edit':'assets/new','classifications','tags','search','activity','type-views'][screen.id-1])||'assets'):onPhase(screen.phase,screen.title)}><span className="screen-number">{String(screen.id).padStart(2,'0')}</span><span><strong>{screen.title}</strong><small>Phase {screen.phase} · {phaseNames[screen.phase-1]}</small></span><span className={'status '+(screen.phase===1?'status-active':'status-neutral')}>{screen.phase===1?'Built':'Planned'}</span><ChevronRight size={16}/></button>)}</div>
+    <div className="roadmap-list">{matches.map(screen=><button className="roadmap-item" type="button" key={screen.id} onClick={()=>screen.phase===1?onRoute((['dashboard','assets',firstAssetId?'asset/'+encodeURIComponent(firstAssetId):'assets/new','assets/new',firstAssetId?'asset/'+encodeURIComponent(firstAssetId)+'/edit':'assets/new','classifications','tags','search','activity','type-views'][screen.id-1])||'assets'):screen.phase===2?onRoute((['acquisitions','acquisitions/new',firstAssetId?'acquisitions/'+encodeURIComponent(firstAssetId):'acquisitions','cost-basis','lifecycle','ownership',firstAssetId?'ownership/'+encodeURIComponent(firstAssetId):'ownership',firstAssetId?'ownership/manage/'+encodeURIComponent(firstAssetId):'ownership/manage','dispose','dispositions'][screen.id-11])||'acquisitions'):onPhase(screen.phase,screen.title)}><span className="screen-number">{String(screen.id).padStart(2,'0')}</span><span><strong>{screen.title}</strong><small>Phase {screen.phase} · {phaseNames[screen.phase-1]}</small></span><span className={'status '+(screen.phase<=2?'status-active':'status-neutral')}>{screen.phase<=2?'Built':'Planned'}</span><ChevronRight size={16}/></button>)}</div>
   </div>
 }
 
@@ -247,18 +253,18 @@ export default function App() {
   const plannedTitle=foundNav?.name || (pageSlug?decodeURIComponent(pageSlug).replace(/-/g,' '):'Future screen')
   const plannedPhase=foundNav?.phase || 1
   const results=useMemo(()=>search.trim()?items.filter(a=>(a.name+' '+a.category+' '+a.subtype).toLowerCase().includes(search.toLowerCase())).slice(0,5):[],[items,search])
-  const openPlanned=(phase:number,title:string)=>setDialog({title,phase,description:'This screen is reserved for Phase '+phase+'. The Phase 0 preview intentionally does not simulate completed data-entry or production workflows.'})
+  const openPlanned=(phase:number,title:string)=>setDialog({title,phase,description:'This screen is reserved for Phase '+phase+'. Earlier phases never simulate completed external integrations, payments or regulated transfers.'})
   const openAlert=(title:string,detail:string)=>setDialog({title,description:detail+'. This is illustrative demo data. Operational actions are implemented in their scheduled development phases.'})
   return <div className="app" data-theme={theme}>
     {menuOpen && <button type="button" className="mobile-scrim" aria-label="Close navigation" onClick={()=>setMenuOpen(false)}/>}
     <aside className={'sidebar '+(menuOpen?'sidebar-open':'')} aria-label="Main navigation">
       <Brand />
       <div className="sidebar-scroll">
-        <div className="nav-section"><span className="nav-heading">WORKSPACE</span>{nav.map(item=><button type="button" key={item.slug} className={'nav-item '+((item.slug==='dashboard'&&page==='dashboard'||page==='planned'&&item.slug===pageSlug||page==='registry'&&item.slug===path)?'current':'')} onClick={()=>{go(item.phase===1?item.slug:'planned/'+item.slug);setMenuOpen(false)}}><item.icon size={19} strokeWidth={1.8}/><span>{item.name}</span>{item.phase>1&&<span className="nav-soon" title={'Phase '+item.phase}>P{item.phase}</span>}</button>)}</div>
+        <div className="nav-section"><span className="nav-heading">WORKSPACE</span>{nav.map(item=><button type="button" key={item.slug} className={'nav-item '+((item.slug==='dashboard'&&page==='dashboard'||page==='planned'&&item.slug===pageSlug||page==='registry'&&item.slug===path||page==='lifecycle'&&(path===item.slug||path.startsWith(item.slug+'/')||path.startsWith(item.slug+'?')))?'current':'')} onClick={()=>{go(item.phase<=2?item.slug:'planned/'+item.slug);setMenuOpen(false)}}><item.icon size={19} strokeWidth={1.8}/><span>{item.name}</span>{item.phase>2&&<span className="nav-soon" title={'Phase '+item.phase}>P{item.phase}</span>}</button>)}</div>
         <div className="nav-section integration-section"><span className="nav-heading">INTEGRATIONS</span>{integrations.map(item=><button type="button" className="nav-item" key={item.name} onClick={()=>{go('planned/'+slug(item.name));setMenuOpen(false)}}><Layers3 size={18}/><span>{item.name}</span><span className="nav-soon">P6</span></button>)}</div>
         <div className="nav-section foundation-section"><span className="nav-heading">BUILD FOUNDATION</span><button type="button" className={'nav-item '+(page==='design'?'current':'')} onClick={()=>go('design')}><Component size={18}/><span>Design system</span></button><button type="button" className={'nav-item '+(page==='roadmap'?'current':'')} onClick={()=>go('roadmap')}><BookOpen size={18}/><span>60-screen roadmap</span></button></div>
       </div>
-      <div className="sidebar-bottom"><div className="assistant-card"><span className="assistant-icon"><Sparkles size={18}/></span><strong>Asset intelligence</strong><p>Intelligence workflows arrive in Phase 5.</p><button type="button" onClick={()=>openPlanned(5,'Asset AI Intelligence Assistant')}>Explore the roadmap <ArrowRight size={15}/></button></div><div className="sidebar-version"><span className="ready-dot"/> Phase 1 · Asset registry <span>v0.2</span></div></div>
+      <div className="sidebar-bottom"><div className="assistant-card"><span className="assistant-icon"><Sparkles size={18}/></span><strong>Asset intelligence</strong><p>Intelligence workflows arrive in Phase 5.</p><button type="button" onClick={()=>openPlanned(5,'Asset AI Intelligence Assistant')}>Explore the roadmap <ArrowRight size={15}/></button></div><div className="sidebar-version"><span className="ready-dot"/> Phase 2 · Asset lifecycle <span>v0.3</span></div></div>
     </aside>
     <div className="workspace">
       <header className="topbar"><div className="topbar-left"><button type="button" className="icon-button mobile-menu" onClick={()=>setMenuOpen(o=>!o)} aria-label="Toggle navigation"><Menu size={21}/></button><span className="breadcrumb-label">Personal Kernel</span><ChevronRight size={15} className="crumb-divider"/><strong>Asset OS</strong></div>
@@ -267,7 +273,7 @@ export default function App() {
         </div>
         <div className="topbar-actions"><span className="demo-flag">PREVIEW</span><button type="button" className="icon-button" onClick={()=>setTheme(t=>t==='dark'?'light':'dark')} aria-label={theme==='dark'?'Switch to light theme':'Switch to dark theme'}>{theme==='dark'?<Sun size={20}/>:<Moon size={20}/>}</button><div className="notification-anchor"><button type="button" className="icon-button" aria-label="Show demo notifications" aria-expanded={notificationsOpen} onClick={()=>setNotificationsOpen(p=>!p)}><Bell size={19}/><span className="notification-dot">3</span></button>{notificationsOpen&&<div className="notification-menu"><strong>Demo notifications</strong>{alerts.slice(0,3).map(alert=><button type="button" key={alert.id} onClick={()=>{setNotificationsOpen(false);openAlert(alert.title,alert.detail)}}><span>{alert.title}</span><small>{alert.detail}</small></button>)}</div>}</div><div className="account-chip"><span>AO</span><div><strong>Preview workspace</strong><small>Local demo mode</small></div><ChevronDown size={15}/></div></div>
       </header>
-      <main className="main-content">{page==='dashboard'?<Dashboard items={items} store={store} onSelect={a=>go('asset/'+encodeURIComponent(a.id))} onPlanned={openPlanned} onAlert={openAlert}/>:page==='registry'?<RegistryExperience key={path} path={path} store={store} onChange={handleChange} navigate={go} report={report}/>:page==='design'?<DesignSystem openModal={()=>setDialog({title:'Reusable dialog',description:'This is a working, keyboard-dismissable modal using the Asset OS dialog component.'})}/>:page==='roadmap'?<Roadmap onPhase={openPlanned} onRoute={go} firstAssetId={store.records[0]?.id||null}/>:<Planned title={plannedTitle} phase={plannedPhase}/>}
+      <main className="main-content">{page==='dashboard'?<Dashboard items={items} store={store} onSelect={a=>go('asset/'+encodeURIComponent(a.id))} onPlanned={openPlanned} onAlert={openAlert}/>:page==='registry'?<RegistryExperience key={path} path={path} store={store} onChange={handleChange} navigate={go} report={report}/>:page==='lifecycle'?<LifecycleExperience key={path.split('?')[0]} path={path} store={store} onChange={handleChange} navigate={go} report={report}/>:page==='design'?<DesignSystem openModal={()=>setDialog({title:'Reusable dialog',description:'This is a working, keyboard-dismissable modal using the Asset OS dialog component.'})}/>:page==='roadmap'?<Roadmap onPhase={openPlanned} onRoute={go} firstAssetId={store.records[0]?.id||null}/>:<Planned title={plannedTitle} phase={plannedPhase}/>}
         <footer className="app-footer"><span>© 2026 Asset OS · Personal Kernel ecosystem · Prototype only</span><div><button type="button" onClick={()=>go('roadmap')}><BookOpen size={14}/> Screen plan</button><a href="https://github.com/Sean-steve/Asset-Os" target="_blank" rel="noreferrer"><ExternalLink size={14}/> GitHub repository</a></div></footer>
       </main>
     </div>

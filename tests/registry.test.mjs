@@ -14,11 +14,11 @@ const asInput = (record) => {
 }
 const today='2026-10-31T12:00:00.000Z'
 
-test('phase one has exactly ten implemented screens and 50 planned',()=>{
+test('phases one and two have 20 implemented screens and 40 planned',()=>{
   assert.equal(screens.length,60)
   assert.deepEqual(screens.slice(0,10).map(s=>s.id),[1,2,3,4,5,6,7,8,9,10])
-  assert.equal(screens.filter(s=>s.status==='implemented').length,10)
-  assert.equal(screens.filter(s=>s.status==='planned').length,50)
+  assert.equal(screens.filter(s=>s.status==='implemented').length,20)
+  assert.equal(screens.filter(s=>s.status==='planned').length,40)
 })
 
 test('synthetic seed contains five distinct assets, KES totals reconcile',()=>{
@@ -32,7 +32,7 @@ test('synthetic seed contains five distinct assets, KES totals reconcile',()=>{
 
 test('asset create creates immutable identifier and real local activity record',()=>{
   const before=initialRegistry()
-  const input={...asInput(before.records[0]),name:'Test warehouse',value:1000000,equity:500000}
+  const input={...asInput(before.records[0]),lifecycle:'PLANNED',operational:'IDLE',name:'Test warehouse',value:1000000,equity:500000}
   const after=createAsset(before,input,today)
   assert.equal(before.records.length,5)
   assert.equal(after.records.length,6)
@@ -74,7 +74,7 @@ test('bad amounts, categories, subcategories and dates are rejected',()=>{
 
 test('registry totals are currency-scoped and do not convert other currencies',()=>{
   const before=initialRegistry()
-  const after=createAsset(before,{...asInput(before.records[0]),currency:'USD',value:200,equity:175},today)
+  const after=createAsset(before,{...asInput(before.records[0]),lifecycle:'PLANNED',currency:'USD',value:200,equity:175},today)
   assert.deepEqual(distinctCurrencies(after.records),['KES','USD'])
   assert.equal(sumInCurrency(after.records,'value','KES'),24850000)
   assert.equal(sumInCurrency(after.records,'value','USD'),200)
@@ -117,7 +117,7 @@ test('local persistence works with an isolated storage implementation',()=>{
   const values=new Map()
   const storage={getItem:(key)=>values.get(key)??null,setItem:(key,value)=>{values.set(key,value)}}
   const first=initialRegistry()
-  const state=createAsset(first,{...asInput(first.records[0]),name:'Only in browser'},today)
+  const state=createAsset(first,{...asInput(first.records[0]),lifecycle:'PLANNED',name:'Only in browser'},today)
   assert.equal(saveRegistry(state,storage),true)
   assert.ok(values.has(STORE_KEY))
   assert.equal(loadRegistry(storage).records.length,6)
