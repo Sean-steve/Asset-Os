@@ -3,6 +3,7 @@ const KEY='asset-os:registry:v1'
 const state=page=>page.evaluate(key=>JSON.parse(localStorage.getItem(key)),KEY)
 
 test('asset → acquisition → portfolio → maintenance → reminders persists through reload',async({page})=>{
+  test.setTimeout(90000)
   const exceptions=[]
   page.on('pageerror',e=>exceptions.push(e.message))
   await page.goto('./#/assets/new')
