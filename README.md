@@ -1,6 +1,6 @@
 # Asset OS — Personal Kernel Asset Intelligence
 
-**Status: Phase 3 — Valuation, Financing & Economics frontend implemented.** No production assets, identity, finance records or Kernel services are connected. The five starter assets are synthetic. New edits, acquisition, ownership and disposition records are stored only in your browser. Income/expenses now derive from manually entered browser records; trend lines and alerts remain **demo data**.
+**Status: Phase 4 — Maintenance, Insurance & Operations frontend implemented.** No production assets, identity, finance records or Kernel services are connected. The five starter assets are synthetic. New edits, acquisition, ownership and disposition records are stored only in your browser. Income/expenses now derive from manually entered browser records; trend lines and alerts remain **demo data**.
 
 ## Stack
 - React 19 + TypeScript
@@ -102,6 +102,43 @@ The dashboard now uses manually entered cash flows for KES income and expenses (
 
 **Security and financial authority:** The app is a static prototype using editable localStorage. It does not connect to a bank, lender, broker or Finance OS, establish property rights, compute taxes, certify ROI, post transactions, verify receipts or generate legal audit evidence. Do not enter private financial account data, passwords or real sensitive ownership records.
 
+## Phase 4 — maintenance, insurance and asset operations
+
+The next **10 connected frontend experiences (Screens 31–40)** are implemented with the existing premium UI/UX language.
+
+| ID | Screen | Browser route |
+| --- | --- | --- |
+| 31 | Maintenance Center | `#/maintenance` |
+| 32 | Maintenance Plans | `#/maintenance/plans` |
+| 33 | Maintenance Events and Work Orders | `#/maintenance/jobs` |
+| 34 | Insurance Center | `#/insurance` |
+| 35 | Policy Details and Renewal | `#/insurance/policies/:policyId` and `#/insurance/new` |
+| 36 | Asset Utilization Dashboard | `#/utilization` |
+| 37 | Utilization Details and Readings | `#/utilization/:assetId` |
+| 38 | Evidence & Documents References | `#/evidence` |
+| 39 | Asset Locations & Relationships | `#/locations` |
+| 40 | Operational Calendar | `#/operations-calendar` |
+
+### Walkthrough
+
+1. Open a previously acquired or active asset; select **Maintenance plans** or visit the Maintenance Center. Create a date-based recurrence schedule (days, weeks or months). Due reminders are computed from the entered date.
+2. Create a one-time service job or select an active plan. Mark the job in progress, complete it with a dated note and manually entered cost. The plan's next-due date advances after a completed job. Completion does **not** post a payment, service invoice or accepted inspection.
+3. Record insurance metadata (reference, insurer label, coverage, effective and expiry dates), then view status according to the date. Record renewal as a new policy snapshot that retains the prior policy as superseded. Policy presence is **not** confirmation of coverage.
+4. Record cumulative utilization readings for mileage, hours, uses or occupied days with explicit sources and dates. The detail profile shows true recorded observations and deltas, never synthetic telemetry or occupancy percentages.
+5. Record **evidence metadata only**, not files; sensitive IDs, document contents, URLs and uploaded binaries are prohibited by the prototype. Issue/expiry dates appear in the operational calendar.
+6. Record location changes with effective dates. The asset's current location updates, and the prior location remains preserved. Create informational relationships between assets; component and dependency cycles are rejected.
+7. Open the Operational Calendar to inspect only user-entered maintenance due dates, scheduled jobs, policy expirations and evidence expirations. No Human Kernel, Mission OS, calendar sync, reminders or vendor actions are silently performed.
+
+### Architecture and migration
+
+- **Schema v4** extends `RegistryState` with `phase4` operational collections.
+- Older v1, v2 and v3 browser snapshots are migrated when loaded, preserving asset IDs, lifecycle, ownership, valuation, financing, cash flow and prior activity.
+- The existing browser storage key stays unchanged to prevent loss of previously saved local records.
+- Source files: `src/operations/core.ts`, `src/operations/OperationsExperience.tsx`, `src/operations/operations.css`.
+- Contract and migration verification: `tests/operations.test.mjs`, plus regression tests from earlier phases.
+
+**Limitations:** This is a public static React preview. It has no backend, authentication, secure vault, telematics, insurer verification, payment processing, provider dispatch, real appointment scheduling or globally authoritative calendar. Avoid real private documents and personal financial information.
+
 ## GitHub Pages
 The Vite deployment base is `/Asset-Os/`. The Actions workflow is `.github/workflows/pages.yml`.
 
@@ -121,7 +158,7 @@ Asset OS owns asset-domain state. Finance OS owns the posted financial ledger, a
 | 1 — Dashboard and registry (01–10) | **Implemented (frontend-only)** |
 | 2 — Lifecycle, acquisition and ownership (11–20) | **Implemented (frontend-only)** |
 | 3 — Valuation, financing and economics (21–30) | **Implemented (frontend-only)** |
-| 4 — Operations and protection (31–40) | Planned |
+| 4 — Operations and protection (31–40) | **Implemented (frontend-only)** |
 | 5 — Portfolio and intelligence (41–50) | Planned |
 | 6 — Kernel integration and administration (51–60) | Planned |
 | 7 — UI certification | Planned |
@@ -153,3 +190,8 @@ Do not commit credentials or personal runtime data to this public repository.
 - `src/economics/EconomicsExperience.tsx` — 10 Phase 3 screens and contextual actions
 - `src/economics/economics.css` — responsive Phase 3 visual system
 - `tests/economics.test.mjs` — Phase 3 financial-boundary, accuracy and migration checks
+
+- `src/operations/core.ts` — maintenance, jobs, policies, readings, evidence references, locations, relations, derived calendar
+- `src/operations/OperationsExperience.tsx` — connected Phase 4 screens 31–40
+- `src/operations/operations.css` — responsive Phase 4 UI
+- `tests/operations.test.mjs` — operational and persistence integrity regression tests

@@ -30,18 +30,18 @@ const checkError=(fn,pattern)=>assert.throws(fn,pattern)
 test('Phase 2 routes remain intact after Phase 3 adds new screens',()=>{
  assert.equal(screens.length,60)
  assert.deepEqual(screens.slice(10,20).map(s=>s.id),[11,12,13,14,15,16,17,18,19,20])
- assert.equal(screens.filter(s=>s.status==='implemented').length,30)
- assert.equal(screens.filter(s=>s.status==='planned').length,30)
+ assert.equal(screens.filter(s=>s.status==='implemented').length,40)
+ assert.equal(screens.filter(s=>s.status==='planned').length,20)
  const ui=readFileSync(new URL('../src/lifecycle/LifecycleExperience.tsx',import.meta.url),'utf8')
  for(const route of ['acquisitions','acquisitions/new','cost-basis','lifecycle','ownership','ownership/manage','dispose','dispositions']) assert.ok(ui.includes("'"+route+"'"),route)
 })
 test('old Phase 1 local snapshot migrates to Phase 2 without changing asset identity',()=>{
  const s=initialRegistry()
- const old={...s,version:1};delete old.phase2;delete old.phase3
+ const old={...s,version:1};delete old.phase2;delete old.phase3;delete old.phase4
  const raw=JSON.stringify(old)
  const storage={getItem:(key)=>{assert.equal(key,STORE_KEY);return raw}}
  const loaded=loadRegistry(storage)
- assert.equal(loaded.version,3)
+ assert.equal(loaded.version,4)
  assert.equal(loaded.records.length,5)
  assert.equal(loaded.records[0].id,s.records[0].id)
  assert.deepEqual(loaded.phase2.acquisitions,[])
@@ -49,7 +49,7 @@ test('old Phase 1 local snapshot migrates to Phase 2 without changing asset iden
  assert.deepEqual(loaded.phase2.dispositions,[])
  const entries=new Map()
  assert.ok(saveRegistry(loaded,{setItem:(key,value)=>entries.set(key,value)}))
- assert.equal(JSON.parse(entries.get(STORE_KEY)).version,3)
+ assert.equal(JSON.parse(entries.get(STORE_KEY)).version,4)
 })
 test('sample active assets have no fabricated acquisition or ownership record',()=>{
  const s=initialRegistry()
