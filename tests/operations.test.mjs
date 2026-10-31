@@ -30,30 +30,31 @@ const reading=(assetId,metric='ODOMETER_KM',value=100,observedOn='2026-10-10')=>
 test('Screens 31–40 are all in the canonical inventory and 40/60 are implemented',()=>{
  assert.equal(screens.length,60)
  assert.deepEqual(screens.slice(30,40).map(x=>x.id),[31,32,33,34,35,36,37,38,39,40])
- assert.equal(screens.filter(x=>x.status==='implemented').length,50)
- assert.equal(screens.filter(x=>x.status==='planned').length,10)
+ assert.equal(screens.filter(x=>x.status==='implemented').length,60)
+ assert.equal(screens.filter(x=>x.status==='planned').length,0)
  const ui=readFileSync(new URL('../src/operations/OperationsExperience.tsx',import.meta.url),'utf8')
  for(const r of ['maintenance','maintenance/plans','maintenance/jobs','insurance','insurance/new','insurance/policies/','utilization','evidence','locations','operations-calendar'])
   assert.ok(ui.includes("'"+r),r)
 })
-test('v1/v2/v3 snapshots preserve assets, acquisition, finance history through version 5',()=>{
+test('v1/v2/v3 snapshots preserve assets, acquisition, finance history through version 6',()=>{
  const {state,id}=acquired()
  const finance=recordValuation(state,{assetId:id,date:'2026-10-10',amount:1000,method:'MANUAL_ESTIMATE',source:'Example',confidence:'LOW',notes:''},NOW)
  for(const version of [1,2,3]){
   const old=structuredClone(finance);old.version=version
-  if(version<5)delete old.phase5
+  if(version<6)delete old.phase6
+  if(version<5)delete old.phase5;delete old.phase6
   if(version<4)delete old.phase4
   if(version<3)delete old.phase3
   if(version<2)delete old.phase2
   const loaded=loadRegistry({getItem:key=>{assert.equal(key,STORE_KEY);return JSON.stringify(old)}})
-  assert.equal(loaded.version,5)
+  assert.equal(loaded.version,6)
   assert.equal(loaded.records[0].id,id)
   assert.deepEqual(loaded.phase4,emptyOperationalData())
   if(version>=2)assert.equal(loaded.phase2.acquisitions.length,1)
   if(version>=3)assert.equal(loaded.phase3.valuations.length,1)
   const m=new Map()
   assert.equal(saveRegistry(loaded,{setItem:(k,v)=>m.set(k,v)}),true)
-  assert.equal(JSON.parse(m.get(STORE_KEY)).version,5)
+  assert.equal(JSON.parse(m.get(STORE_KEY)).version,6)
  }
 })
 test('Initial sample workspace does not contain fabricated service, coverage, telemetry or documents',()=>{

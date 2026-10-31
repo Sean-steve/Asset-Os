@@ -7,6 +7,7 @@ import { emptyLifecycleData, validLifecycleData, type LifecycleData } from '../l
 import { emptyFinanceData, validFinanceData, type FinanceData } from '../economics/core.ts'
 import { emptyOperationalData, validOperationalData, type OperationalData } from '../operations/core.ts'
 import { emptyIntelligenceData, validIntelligenceData, type IntelligenceData } from '../intelligence/core.ts'
+import { emptyGovernanceData, validGovernanceData, type GovernanceData } from '../governance/core.ts'
 
 export type Category = {
   name: string
@@ -46,16 +47,17 @@ export type ActivityEntry = {
   id: string
   assetId: string
   assetName: string
-  event: 'REGISTERED' | 'UPDATED' | 'TAGGED' | 'CLASSIFIED' | 'RESET' | 'ACQUISITION_STARTED' | 'ACQUIRED' | 'LIFECYCLE_CHANGED' | 'OWNERSHIP_CHANGED' | 'DISPOSED' | 'VALUATION_RECORDED' | 'VALUATION_ACCEPTED' | 'FINANCING_RECORDED' | 'BALANCE_RECORDED' | 'CASH_FLOW_RECORDED' | 'RECONCILIATION_LINKED' | 'MAINTENANCE_PLAN_CREATED' | 'MAINTENANCE_PLAN_CHANGED' | 'SERVICE_JOB_CREATED' | 'SERVICE_JOB_CHANGED' | 'SERVICE_JOB_COMPLETED' | 'INSURANCE_RECORDED' | 'INSURANCE_CHANGED' | 'UTILIZATION_RECORDED' | 'EVIDENCE_REFERENCED' | 'LOCATION_CHANGED' | 'ASSET_RELATED' | 'PORTFOLIO_CREATED' | 'PORTFOLIO_CHANGED' | 'PORTFOLIO_MEMBERSHIP_CHANGED' | 'RISK_ASSESSED' | 'SCENARIO_SAVED' | 'INTELLIGENCE_NOTE_SAVED'
+  event: 'REGISTERED' | 'UPDATED' | 'TAGGED' | 'CLASSIFIED' | 'RESET' | 'ACQUISITION_STARTED' | 'ACQUIRED' | 'LIFECYCLE_CHANGED' | 'OWNERSHIP_CHANGED' | 'DISPOSED' | 'VALUATION_RECORDED' | 'VALUATION_ACCEPTED' | 'FINANCING_RECORDED' | 'BALANCE_RECORDED' | 'CASH_FLOW_RECORDED' | 'RECONCILIATION_LINKED' | 'MAINTENANCE_PLAN_CREATED' | 'MAINTENANCE_PLAN_CHANGED' | 'SERVICE_JOB_CREATED' | 'SERVICE_JOB_CHANGED' | 'SERVICE_JOB_COMPLETED' | 'INSURANCE_RECORDED' | 'INSURANCE_CHANGED' | 'UTILIZATION_RECORDED' | 'EVIDENCE_REFERENCED' | 'LOCATION_CHANGED' | 'ASSET_RELATED' | 'PORTFOLIO_CREATED' | 'PORTFOLIO_CHANGED' | 'PORTFOLIO_MEMBERSHIP_CHANGED' | 'RISK_ASSESSED' | 'SCENARIO_SAVED' | 'INTELLIGENCE_NOTE_SAVED' | 'PREVIEW_SETTINGS_CHANGED' | 'INTEGRATION_PLAN_RECORDED' | 'KERNEL_ACTION_DRAFT_CHANGED' | 'LOCAL_ALERT_CHANGED'
   details: string
   at: string
 }
 export type RegistryState = {
-  version: 5
+  version: 6
   phase2: LifecycleData
   phase3: FinanceData
   phase4: OperationalData
   phase5: IntelligenceData
+  phase6: GovernanceData
   records: AssetRecord[]
   tags: string[]
   categories: Category[]
@@ -110,7 +112,7 @@ export const SAMPLE_ASSETS: AssetRecord[] = [
 const INITIAL_TAGS = ['Income producing','Priority','Vehicle','Long term','Operations','Review','Digital']
 function copy<T>(value: T): T { return JSON.parse(JSON.stringify(value)) as T }
 export function initialRegistry(): RegistryState {
-  return {version:5,phase2:emptyLifecycleData(),phase3:emptyFinanceData(),phase4:emptyOperationalData(),phase5:emptyIntelligenceData(),records:copy(SAMPLE_ASSETS),categories:copy(DEFAULT_CATEGORIES),tags:[...INITIAL_TAGS],activity:[]}
+  return {version:6,phase2:emptyLifecycleData(),phase3:emptyFinanceData(),phase4:emptyOperationalData(),phase5:emptyIntelligenceData(),phase6:emptyGovernanceData(),records:copy(SAMPLE_ASSETS),categories:copy(DEFAULT_CATEGORIES),tags:[...INITIAL_TAGS],activity:[]}
 }
 function validRecord(value: unknown): value is AssetRecord {
   if (!value || typeof value!=='object') return false
@@ -130,18 +132,19 @@ export function loadRegistry(storage?: Pick<Storage,'getItem'>): RegistryState {
     if (!value || typeof value !== 'object') return initialRegistry()
     const obj=value as Partial<RegistryState>
     const storedVersion=(obj as {version?:number}).version ?? 0
-    if (![1,2,3,4,5].includes(storedVersion)||!Array.isArray(obj.records)||!obj.records.every(validRecord)||
+    if (![1,2,3,4,5,6].includes(storedVersion)||!Array.isArray(obj.records)||!obj.records.every(validRecord)||
       !Array.isArray(obj.tags)||!obj.tags.every(t=>typeof t==='string')||
       !Array.isArray(obj.categories)||!obj.categories.every(c=>c&&typeof c.name==='string'&&Array.isArray(c.subcategories))||
       !Array.isArray(obj.activity)) return initialRegistry()
     if(storedVersion>=2&&!validLifecycleData(obj.phase2))return initialRegistry()
     if(storedVersion>=3&&!validFinanceData(obj.phase3))return initialRegistry()
     if(storedVersion>=4&&!validOperationalData(obj.phase4))return initialRegistry()
-    if(storedVersion===5&&!validIntelligenceData(obj.phase5))return initialRegistry()
+    if(storedVersion>=5&&!validIntelligenceData(obj.phase5))return initialRegistry()
+    if(storedVersion===6&&!validGovernanceData(obj.phase6))return initialRegistry()
     const cloned=copy(obj as RegistryState)
-    // Retain the original browser storage key to upgrade v1–v4 records in place.
+    // Retain the original browser storage key to upgrade v1–v5 records in place.
     // Never overwrite a legacy snapshot until the next successful user command.
-    return {...cloned,version:5,phase2:storedVersion>=2?cloned.phase2:emptyLifecycleData(),phase3:storedVersion>=3?cloned.phase3:emptyFinanceData(),phase4:storedVersion>=4?cloned.phase4:emptyOperationalData(),phase5:storedVersion===5?cloned.phase5:emptyIntelligenceData()}
+    return {...cloned,version:6,phase2:storedVersion>=2?cloned.phase2:emptyLifecycleData(),phase3:storedVersion>=3?cloned.phase3:emptyFinanceData(),phase4:storedVersion>=4?cloned.phase4:emptyOperationalData(),phase5:storedVersion>=5?cloned.phase5:emptyIntelligenceData(),phase6:storedVersion===6?cloned.phase6:emptyGovernanceData()}
   } catch { return initialRegistry() }
 }
 export function saveRegistry(state:RegistryState,storage?: Pick<Storage,'setItem'>): boolean {
