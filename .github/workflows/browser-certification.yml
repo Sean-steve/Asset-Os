@@ -1,0 +1,37 @@
+name: Asset OS Browser Certification
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  chromium-certification:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+      - name: Install Chromium and Linux dependencies
+        run: npx playwright install --with-deps chromium
+      - name: Build production bundle
+        run: npm run build
+      - name: Execute frontend browser certification
+        run: npm run test:e2e
+      - name: Publish browser test evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: phase-7-chromium-certification
+          path: |
+            playwright-report/
+            test-results/
+          if-no-files-found: ignore
+          retention-days: 14

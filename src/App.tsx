@@ -8,7 +8,7 @@ import {
   Moon, Plus, Search, Server, ShieldCheck, Sparkles, Scale, Settings, LockKeyhole, ClipboardList,
   Sun, TrendingUp, Wallet, Wrench, X, type LucideIcon
 } from 'lucide-react'
-import { activity, alerts, allocation, events, type Asset } from './demo'
+import { allocation, type Asset } from './demo'
 import { RegistryExperience } from './registry/RegistryExperience'
 import { LifecycleExperience } from './lifecycle/LifecycleExperience'
 import { EconomicsExperience } from './economics/EconomicsExperience'
@@ -16,12 +16,12 @@ import { OperationsExperience } from './operations/OperationsExperience'
 import { IntelligenceExperience } from './intelligence/IntelligenceExperience'
 import { GovernanceExperience } from './governance/GovernanceExperience'
 import { alertsFor } from './governance/core'
+import { operationalEvents } from './operations/core'
 import { flowSummary, indicativeEquity } from './economics/core'
 import { loadRegistry, saveRegistry, sumInCurrency, type AssetRecord, type RegistryState } from './registry/core'
 import { phaseNames, screens } from './inventory'
 
 type Page = 'dashboard' | 'design' | 'roadmap' | 'planned' | 'registry' | 'lifecycle' | 'economics' | 'operations' | 'intelligence' | 'governance'
-type Period = '1M' | '3M' | '6M' | '1Y' | '5Y'
 type Palette = 'blue' | 'green' | 'violet' | 'orange' | 'red'
 
 const nav: Array<{name: string; icon: LucideIcon; slug: string; phase: number}> = [
@@ -80,21 +80,12 @@ const icons: Record<string, LucideIcon> = {
   building: Building2, car: CarFront, chart: BarChart3,
   briefcase: BriefcaseBusiness, server: Server,
 }
-const periods: Period[] = ['1M','3M','6M','1Y','5Y']
-const trendData: Record<Period, number[]> = {
-  '1M':[20.9,21.2,21.0,21.7,22.1,22.5,22.2,22.9,23.4,23.2,24.1,24.85],
-  '3M':[18.2,18.0,18.8,19.5,20.2,20.1,21.7,21.3,22.8,23.2,24.1,24.85],
-  '6M':[15.4,15.8,16.0,16.9,17.4,18.5,19.1,20.0,21.6,22.2,23.7,24.85],
-  '1Y':[12.0,13.1,14.3,15.0,16.7,18.0,19.4,20.8,22.2,23.7,23.4,24.85],
-  '5Y':[3.9,4.8,6.6,7.1,8.4,10.6,11.7,13.9,16.2,19.4,21.7,24.85],
-}
 const short = (amount: number) => amount >= 1_000_000 ? 'KES ' + (amount / 1_000_000).toFixed(2) + 'M' : amount >= 1_000 ? 'KES ' + (amount / 1_000).toFixed(0) + 'K' : 'KES ' + Intl.NumberFormat('en-KE').format(amount)
 const go = (route: string) => { window.location.hash = '/' + route }
 const currentPath = () => decodeURIComponent(window.location.hash.replace(/^#\/?/, '')) || 'dashboard'
 const getPage = (path: string): Page =>
   path === 'dashboard' ? 'dashboard' : path === 'design' ? 'design' : path === 'roadmap' ? 'roadmap' : /^(assets(?:\/new)?|asset\/|classifications$|tags$|search$|activity$|type-views$)/.test(path) ? 'registry' : /^(acquisitions(?:\/|$)|cost-basis(?:\/|$)|lifecycle(?:\?|$)|ownership(?:\/|$)|dispose(?:\/|$)|dispositions(?:\/|$))/.test(path) ? 'lifecycle' : /^(valuations(?:\/|$)|valuation-history(?:\?|$)|financing(?:\/|$)|income-expenses$|cash-flow(?:\?|$)|economics(?:\?|$)|reconciliation$)/.test(path) ? 'economics' : /^(maintenance(?:\/|$)|insurance(?:\/|$)|utilization(?:\/|$)|evidence$|locations$|operations-calendar$)/.test(path) ? 'operations' : /^(portfolios$|portfolio\/|allocation(?:\?|$)|comparison$|performance(?:\?|$)|risk-center$|risk\/|underperforming$|scenarios(?:\?|$)|intelligence$)/.test(path) ? 'intelligence' : /^(wealth-interface$|kernel-actions$|notifications$|reports$|integrations(?:\/|$)|team-access$|security-audit$|settings$|onboarding$)/.test(path) ? 'governance' : 'planned'
 const slug = (value: string) => value.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
-const toneFor = (tone: string) => 'tone-' + tone
 const currency = (amount:number,code:string) => new Intl.NumberFormat('en-KE',{maximumFractionDigits:2}).format(amount)+' '+code
 const viewAsset = (a:AssetRecord):Asset => ({id:a.id,name:a.name,category:a.category,subtype:a.subcategory,value:a.value,equity:a.equity,status:a.lifecycle==='ACTIVE'?'Active':a.lifecycle.split('_').map(s=>s[0]+s.slice(1).toLowerCase()).join(' '),icon:({ 'Real Estate':'building',Vehicles:'car',Investments:'chart',Business:'briefcase','Digital Assets':'server' } as Record<string,string>)[a.category]||'layers',color:({ 'Real Estate':'#478ffa',Vehicles:'#45cba4',Investments:'#f0bf63',Business:'#f58c63','Digital Assets':'#a384f5' } as Record<string,string>)[a.category]||'#95a9c9',currency:a.currency,lifecycle:a.lifecycle})
 
@@ -136,26 +127,32 @@ function Kpi({label,value,change,icon:Icon,tone,detail}: {label:string;value:str
   return <div className={'kpi kpi-'+tone}><div className="kpi-upper"><span>{label}</span><div className="kpi-icon"><Icon size={19}/></div></div><strong>{value}</strong><div className="kpi-foot"><span>{change.startsWith('+')&&<ArrowUpRight size={15}/>} {change}</span><small>{detail}</small></div></div>
 }
 
-function TrendChart({period,changePeriod}: {period:Period;changePeriod:(p:Period)=>void}) {
-  const values=trendData[period]
-  const points=values.map((v,i)=>[38+i*56.2,210-(v-0)/28*190])
-  const line='M '+points.map(p=>p.join(' ')).join(' L ')
-  const fill=line+' L '+points[points.length-1][0]+' 210 L 38 210 Z'
-  return <Surface title="Illustrative trend (demo only)" className="trend-surface" action={<div className="range-tabs" aria-label="Time range">
-    {periods.map(p=><button type="button" key={p} aria-pressed={p===period} className={p===period?'active':''} onClick={()=>changePeriod(p)}>{p}</button>)}
-  </div>}>
-    <div className="chart-container">
-      <svg viewBox="0 0 700 240" role="img" aria-label={'Illustrative net worth trend for '+period+'. Last value KES 24.85 million.'} preserveAspectRatio="xMidYMid meet">
-        <defs><linearGradient id="areaFill" x1="0" x2="0" y1="0" y2="1"><stop offset="0%" stopColor="#268bff" stopOpacity=".32"/><stop offset="100%" stopColor="#268bff" stopOpacity=".01"/></linearGradient></defs>
-        {[0,1,2,3,4].map(i=><g key={i}><line x1="38" x2="670" y1={20+i*47.5} y2={20+i*47.5} stroke="currentColor" opacity=".1"/><text x="0" y={25+i*47.5} fill="currentColor" opacity=".56" fontSize="12">{(2.8-i*.7).toFixed(1)}M</text></g>)}
-        {values.map((_,i)=><line key={i} x1={38+i*56.2} x2={38+i*56.2} y1="20" y2="210" stroke="currentColor" opacity=".045"/>)}
-        <path d={fill} fill="url(#areaFill)" />
-        <path d={line} stroke="#318fff" strokeWidth="3.4" fill="none" strokeLinecap="round" strokeLinejoin="round" />
-        <circle cx={points[points.length-1][0]} cy={points[points.length-1][1]} r="5.5" fill="#74bcff" stroke="#081422" strokeWidth="2"/>
-        {['Jan','Mar','May','Jul','Sep','Nov'].map((month,i)=><text key={month} x={38+i*112.4} y="232" fill="currentColor" opacity=".55" fontSize="12">{month}</text>)}
+function TrendChart({store,onView}:{store:RegistryState;onView:()=>void}) {
+  // Only one asset's recorded accepted values; never fabricate consolidated history.
+  const accepted=store.phase3.valuations.filter(v=>v.status==='ACCEPTED'&&v.currency==='KES'&&store.records.some(a=>a.id===v.assetId&&['ACQUIRED','ACTIVE','SUSPENDED'].includes(a.lifecycle)))
+  const groups=new Map<string,typeof accepted>()
+  for(const v of accepted)groups.set(v.assetId,[...(groups.get(v.assetId)||[]),v])
+  const eligible=[...groups.entries()].filter(([,values])=>new Set(values.map(v=>v.date)).size>=2).sort((a,b)=>b[1].length-a[1].length)
+  const [assetId,raw]=eligible[0]||['',[]]
+  const observations=raw.slice().sort((a,b)=>a.date.localeCompare(b.date)).slice(-12)
+  const asset=store.records.find(a=>a.id===assetId)
+  const values=observations.map(v=>v.amount)
+  const min=values.length?Math.min(...values):0,max=values.length?Math.max(...values):0
+  const spread=Math.max(1,max-min)
+  const points=observations.map((v,i)=>[45+(i/(observations.length-1))*610,192-((v.amount-min)/spread)*142])
+  const line=points.length>1?'M '+points.map(p=>p.join(' ')).join(' L '):''
+  return <Surface title="Recorded valuation history" className="trend-surface" action={<button type="button" className="link-button" onClick={onView}>Valuation history <ArrowRight size={15}/></button>}>
+    {observations.length>=2?<div className="chart-container">
+      <div className="trend-series-label">{asset?.name||'Selected asset'} · locally accepted observations · KES</div>
+      <svg viewBox="0 0 700 240" role="img" aria-label={'Locally accepted valuation observations for '+(asset?.name||'asset')+', from '+observations[0].date+' to '+observations[observations.length-1].date} preserveAspectRatio="xMidYMid meet">
+        {[0,1,2,3].map(i=><line key={i} x1="45" x2="660" y1={50+i*47.3} y2={50+i*47.3} stroke="currentColor" opacity=".13"/>)}
+        <path d={line} stroke="#318fff" strokeWidth="3.4" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
+        {points.map((p,i)=><circle key={observations[i].id} cx={p[0]} cy={p[1]} r="5" fill="#74bcff"><title>{observations[i].date+': '+currency(observations[i].amount,'KES')}</title></circle>)}
+        <text x="45" y="225" fill="currentColor" opacity=".7" fontSize="12">{observations[0].date}</text>
+        <text x="650" y="225" textAnchor="end" fill="currentColor" opacity=".7" fontSize="12">{observations[observations.length-1].date}</text>
       </svg>
-      <div className="trend-note"><span className="note-dot"/> <span>Illustrative portfolio trend</span><strong>+12.8% this year</strong></div>
-    </div>
+      <div className="trend-note"><span className="note-dot"/> <span>{observations.length} locally accepted entries; not independently verified</span><strong>{currency(values[values.length-1],'KES')}</strong></div>
+    </div>:<div className="trend-empty"><span className="trend-empty-icon"><BarChart3 size={27}/></span><strong>No historical valuation series yet</strong><p>Record at least two separately dated, locally accepted KES valuations for the same held asset. No historical values or returns are fabricated.</p><button type="button" className="secondary-button" onClick={onView}>Open valuation history <ArrowRight size={15}/></button></div>}
   </Surface>
 }
 
@@ -165,7 +162,7 @@ function AllocationChart({items,onView}: {items:Asset[];onView:()=>void}) {
   const segments=allocation.map(x=>({...x,value:kes.filter(a=>a.category===x.label).reduce((s,a)=>s+a.value,0)}))
   const boundaries=segments.reduce((acc,s)=>{const last=acc.length?acc[acc.length-1].end:0;const end=total>0?last+s.value/total*100:0;acc.push({...s,start:last,end});return acc},[] as Array<typeof segments[number]&{start:number;end:number}>)
   const bg=total>0?'conic-gradient('+boundaries.filter(x=>x.value>0).map(x=>x.color+' '+x.start+'% '+x.end+'%').join(',')+')':'var(--panel-2)'
-  return <Surface title="Asset allocation" className="allocation-surface" action={<button type="button" className="link-button" onClick={onView}>Phase 5 <ArrowRight size={15}/></button>}>
+  return <Surface title="Asset allocation" className="allocation-surface" action={<button type="button" className="link-button" onClick={onView}>View allocation <ArrowRight size={15}/></button>}>
     <div className="allocation-inner"><div className="donut" style={{background:bg}} role="img" aria-label="Current KES asset allocation by category"><div><strong>{total?(total/1_000_000).toFixed(2)+'M':'—'}</strong><span>Tracked value · KES</span></div></div>
     <div className="allocation-legend">{boundaries.filter(i=>i.value>0).map(item=><div key={item.label}><span className="legend-name"><i style={{background:item.color}}/>{item.label}</span><strong>{total>0?(item.value/total*100).toFixed(1):'0'}%</strong></div>)}{total===0&&<span className="p1-subtle">No KES asset values yet.</span>}</div></div>
   </Surface>
@@ -178,7 +175,7 @@ function Performance({items,onView}: {items:Asset[];onView:()=>void}) {
   const grand=kes.reduce((sum,a)=>sum+(metric==='Value'?a.value:a.equity),0)
   const series=categories.map(c=>kes.filter(a=>a.category===c.label).reduce((sum,a)=>sum+(metric==='Value'?a.value:a.equity),0))
   const maxima=Math.max(1,...series)
-  return <Surface title="Category contribution" className="performance-surface" action={<button type="button" className="link-button" onClick={onView}>Phase 5 <ArrowRight size={15}/></button>}>
+  return <Surface title="Category contribution" className="performance-surface" action={<button type="button" className="link-button" onClick={onView}>View performance <ArrowRight size={15}/></button>}>
     <div className="metric-switch"><button type="button" className={metric==='Value'?'active':''} aria-pressed={metric==='Value'} onClick={()=>setMetric('Value')}>Value</button><button type="button" className={metric==='Equity'?'active':''} aria-pressed={metric==='Equity'} onClick={()=>setMetric('Equity')}>Equity</button><span>KES category snapshot</span></div>
     <div className="bars" aria-label={'Tracked '+metric.toLowerCase()+' by category, KES'}>
       {series.map((value,i)=><div className="bar-cell" key={categories[i].label}><div className="bar-plot"><div style={{height:(value/maxima*100)+'%',background:categories[i].color}} title={categories[i].label+': '+(grand?value/grand*100:0).toFixed(1)+'%'} /></div><small>{categories[i].label}</small></div>)}
@@ -189,43 +186,54 @@ function Performance({items,onView}: {items:Asset[];onView:()=>void}) {
   </Surface>
 }
 
-function InsightPanels({onPlanned,onAlert}: {onPlanned:(phase:number,title:string)=>void;onAlert:(title:string,detail:string)=>void}) {
+function InsightPanels({store}:{store:RegistryState}) {
+  const notifications=alertsFor(store).filter(a=>a.state!=='SNOOZED').slice(0,5)
+  const upcoming=operationalEvents(store).filter(e=>e.date>=new Date().toISOString().slice(0,10)).slice(0,5)
+  const recent=store.activity.slice(0,5)
+  const destination=(kind:string)=>kind==='MAINTENANCE_DUE'?'maintenance/plans':kind==='SERVICE_SCHEDULED'?'maintenance/jobs':kind==='POLICY_EXPIRY'?'insurance':'evidence'
   return <aside className="insight-column">
-    <Surface title="Needs attention" action={<button className="link-button" type="button" onClick={()=>onPlanned(4,'Needs attention')}>View all <ArrowRight size={15}/></button>}>
-      <div className="alert-list">{alerts.map(item=><button type="button" className="insight-row" key={item.id} onClick={()=>onAlert(item.title,item.detail)}>
-        <span className={'insight-icon '+toneFor(item.tone)}><Bell size={18}/></span><span className="insight-description"><strong>{item.title}</strong><small>{item.detail}</small></span><span className="insight-right"><ChevronRight size={16}/></span>
-      </button>)}</div>
+    <Surface title="Needs attention" action={<button className="link-button" type="button" onClick={()=>go('notifications')}>View all <ArrowRight size={15}/></button>}>
+      <div className="alert-list">{notifications.length?notifications.map(item=><button type="button" className="insight-row" key={item.key} onClick={()=>go('notifications')}>
+        <span className={'insight-icon '+(item.severity==='HIGH'||item.severity==='OVERDUE'?'tone-red':'tone-orange')}><Bell size={18}/></span><span className="insight-description"><strong>{item.title}</strong><small>{item.context} · {item.date}</small></span><span className="insight-right"><ChevronRight size={16}/></span>
+      </button>):<div className="dashboard-no-data">No current alerts from recorded asset events.</div>}</div>
     </Surface>
-    <Surface title="Upcoming events" action={<button className="link-button" type="button" onClick={()=>onPlanned(4,'Operational Calendar')}>View all <ArrowRight size={15}/></button>}>
-      <div className="event-list">{events.map((item,i)=><button className="event-row" type="button" key={i} onClick={()=>onAlert(item.title,item.detail)}><span className="event-date"><small>{item.date.split(' ')[0]}</small><strong>{item.date.split(' ')[1]}</strong></span><span className={'insight-icon small '+toneFor(item.tone)}><CalendarDays size={16}/></span><span className="insight-description"><strong>{item.title}</strong><small>{item.detail}</small></span></button>)}</div>
+    <Surface title="Upcoming events" action={<button className="link-button" type="button" onClick={()=>go('operations-calendar')}>View all <ArrowRight size={15}/></button>}>
+      <div className="event-list">{upcoming.length?upcoming.map(item=><button className="event-row" type="button" key={item.id} onClick={()=>go(destination(item.kind))}>
+        <span className="event-date"><small>{new Date(item.date+'T00:00:00Z').toLocaleDateString('en-KE',{month:'short',timeZone:'UTC'})}</small><strong>{item.date.slice(-2)}</strong></span>
+        <span className="insight-icon small tone-blue"><CalendarDays size={16}/></span><span className="insight-description"><strong>{item.title}</strong><small>{item.kind.replaceAll('_',' ')} · {item.date}</small></span>
+      </button>):<div className="dashboard-no-data">No upcoming events have been recorded.</div>}</div>
     </Surface>
-    <Surface title="Recent activity" action={<button className="link-button" type="button" onClick={()=>onPlanned(1,'Asset Activity Timeline')}>View all <ArrowRight size={15}/></button>}>
-      <div className="activity-list">{activity.map((item,i)=><div className="activity-row" key={i}><span className={'insight-icon small '+toneFor(item.tone)}>{i===1?<Wrench size={16}/>:i===2?<Plus size={16}/>:<TrendingUp size={16}/>}</span><span className="insight-description"><strong>{item.title}</strong><small>{item.detail}</small></span><small className="when">{item.when}</small></div>)}</div>
+    <Surface title="Recent activity" action={<button className="link-button" type="button" onClick={()=>go('activity')}>View all <ArrowRight size={15}/></button>}>
+      <div className="activity-list">{recent.length?recent.map(item=><div className="activity-row" key={item.id}>
+        <span className="insight-icon small tone-blue"><Activity size={16}/></span><span className="insight-description"><strong>{item.event.replaceAll('_',' ')}</strong><small>{item.assetName}</small></span><small className="when">{new Date(item.at).toLocaleDateString('en-KE')}</small>
+      </div>):<div className="dashboard-no-data">No local activity recorded yet.</div>}</div>
     </Surface>
   </aside>
 }
 
-function Dashboard({items,store,onSelect,onPlanned,onAlert}: {items:Asset[];store:RegistryState;onSelect:(a:Asset)=>void;onPlanned:(phase:number,title:string)=>void;onAlert:(title:string,detail:string)=>void}) {
-  const [period,setPeriod]=useState<Period>('1Y')
+function Dashboard({items,store,onSelect}:{items:Asset[];store:RegistryState;onSelect:(a:Asset)=>void}) {
   const value=sumInCurrency(store.records,'value','KES')
   const held=store.records.filter(a=>a.currency==='KES'&&['ACQUIRED','ACTIVE','SUSPENDED'].includes(a.lifecycle))
-  const equity=held.reduce((sum,a)=>sum+indicativeEquity(store,a.id).amount,0)
+  const equityObservations=held.map(a=>indicativeEquity(store,a.id))
+  const missingDebt=equityObservations.filter(v=>v.method==='UNKNOWN').length
+  const equity=missingDebt===0?equityObservations.reduce((s,v)=>s+v.amount,0):null
   const flow=flowSummary(store.phase3.flows,'KES')
+  const sampleCount=store.records.filter(a=>a.origin==='sample').length
   return <>
-    <div className="page-intro"><div><span className="eyebrow">YOUR ASSET COMMAND CENTER</span><h1>Good morning <span className="wave">✳</span></h1><p>Here’s the complete picture of your assets and their performance.</p></div><div className="page-actions"><span className="today-chip"><CalendarDays size={16}/> Overview</span><button className="primary-button" type="button" onClick={()=>go('assets/new')}><Plus size={18}/> Add asset</button></div></div>
-    <div className="notice"><span className="notice-pill">DEMO DATA</span><span>KES value, indicative equity and all-time income/expenses reflect browser records. Trend, alerts and events remain illustrative; no financial accounts are connected.</span><button type="button" onClick={()=>onPlanned(6,'Integration Hub')}>About connections <ArrowRight size={14}/></button></div>
+    <div className="page-intro"><div><span className="eyebrow">YOUR ASSET COMMAND CENTER</span><h1>Asset overview <span className="wave">✳</span></h1><p>A browser-local snapshot of entered asset records—not consolidated wealth or verified financial information.</p></div><div className="page-actions"><span className="today-chip"><CalendarDays size={16}/> Local preview</span><button className="primary-button" type="button" onClick={()=>go('assets/new')}><Plus size={18}/> Add asset</button></div></div>
+    <div className="notice"><span className="notice-pill">BROWSER DATA</span><span>{sampleCount>0?sampleCount+' illustrative starter asset(s) included. ':''}Amounts are unverified KES-only estimates; no Finance OS connection. Unknown loan balances make equity incomplete. No synthetic trends or operational activity.</span><button type="button" onClick={()=>go('integrations')}>Connections <ArrowRight size={14}/></button></div>
     <div className="dashboard-layout">
       <div className="dashboard-main">
         <div className="kpi-grid">
-          <Kpi label="Held KES asset value" value={short(value)} change="Browser" icon={BarChart3} tone="violet" detail="local records"/>
-          <Kpi label="Indicative KES equity" value={short(equity)} change="Unverified" icon={Layers3} tone="green" detail="local records"/>
-          <Kpi label="Recorded KES income" value={short(flow.INCOME)} change="Browser" icon={TrendingUp} tone="blue" detail="all-time entries"/>
-          <Kpi label="Recorded KES expenses" value={short(flow.EXPENSE)} change="Browser" icon={FileText} tone="red" detail="all-time entries"/>
+          <Kpi label="Held KES asset value" value={short(value)} change="Registry only" icon={BarChart3} tone="violet" detail="unverified records"/>
+          <Kpi label="Indicative KES equity" value={equity===null?'Unknown':short(equity)} change={missingDebt?'Incomplete debts':'Unverified'} icon={Layers3} tone="green" detail={missingDebt?missingDebt+' assets lack debt observations':'manual inputs'}/>
+          <Kpi label="Recorded KES income" value={flow.count?short(flow.INCOME):'—'} change={flow.count?'Entered records':'No flow records'} icon={TrendingUp} tone="blue" detail="all-time entered income"/>
+          <Kpi label="Recorded KES expenses" value={flow.count?short(flow.EXPENSE):'—'} change={flow.count?'Entered records':'No flow records'} icon={FileText} tone="red" detail="all-time entered expenses"/>
         </div>
-        <div className="chart-grid"><TrendChart period={period} changePeriod={setPeriod}/><AllocationChart items={items} onView={()=>onPlanned(5,'Asset Allocation and Concentration')}/></div>
-        <div className="bottom-grid"><AssetTable items={items} onSelect={onSelect} onViewAll={()=>go('assets')}/><Performance items={items} onView={()=>onPlanned(5,'Performance Intelligence Center')}/></div>
+        <div className="chart-grid"><TrendChart store={store} onView={()=>go('valuation-history')}/><AllocationChart items={items} onView={()=>go('allocation')}/></div>
+        <div className="bottom-grid"><AssetTable items={items} onSelect={onSelect} onViewAll={()=>go('assets')}/><Performance items={items} onView={()=>go('performance')}/></div>
       </div>
-      <InsightPanels onPlanned={onPlanned} onAlert={onAlert}/>
+      <InsightPanels store={store}/>
     </div>
   </>
 }
@@ -286,8 +294,8 @@ export default function App() {
   const plannedPhase=foundNav?.phase || 1
   const results=useMemo(()=>search.trim()?items.filter(a=>(a.name+' '+a.category+' '+a.subtype).toLowerCase().includes(search.toLowerCase())).slice(0,5):[],[items,search])
   const openPlanned=(phase:number,title:string)=>setDialog({title,phase,description:'This screen is reserved for Phase '+phase+'. Earlier phases never simulate completed external integrations, payments or regulated transfers.'})
-  const openAlert=(title:string,detail:string)=>setDialog({title,description:detail+'. This is illustrative demo data. Operational actions are implemented in their scheduled development phases.'})
   return <div className="app" data-theme={theme}>
+    <button type="button" className="skip-main" onClick={()=>document.getElementById('main-content')?.focus()}>Skip to main content</button>
     {menuOpen && <button type="button" className="mobile-scrim" aria-label="Close navigation" onClick={()=>setMenuOpen(false)}/>}
     <aside className={'sidebar '+(menuOpen?'sidebar-open':'')} aria-label="Main navigation">
       <Brand />
@@ -300,12 +308,12 @@ export default function App() {
     </aside>
     <div className="workspace">
       <header className="topbar"><div className="topbar-left"><button type="button" className="icon-button mobile-menu" onClick={()=>setMenuOpen(o=>!o)} aria-label="Toggle navigation"><Menu size={21}/></button><span className="breadcrumb-label">Personal Kernel</span><ChevronRight size={15} className="crumb-divider"/><strong>Asset OS</strong></div>
-        <div className="global-search"><Search size={18}/><input type="search" aria-label="Search registered assets" placeholder="Search assets, documents, or ask..." value={search} onChange={e=>setSearch(e.target.value)} onKeyDown={e=>{if(e.key==='Enter'&&results[0]){go('asset/'+encodeURIComponent(results[0].id));setSearch('')}}}/><kbd>⌘ K</kbd>
-          {search.trim()&&<div className="search-results"><span className="eyebrow">BROWSER ASSET RESULTS</span>{results.length?results.map(asset=><button type="button" key={asset.id} onClick={()=>{go('asset/'+encodeURIComponent(asset.id));setSearch('')}}><AssetGlyph asset={asset}/><span><strong>{asset.name}</strong><small>{asset.category}</small></span><ArrowRight size={16}/></button>):<p>No sample assets match your search.</p>}</div>}
+        <div className="global-search"><Search size={18}/><input type="search" aria-label="Search registered assets" placeholder="Search registered assets..." value={search} onChange={e=>setSearch(e.target.value)} onKeyDown={e=>{if(e.key==='Enter'&&results[0]){go('asset/'+encodeURIComponent(results[0].id));setSearch('')}}}/><kbd>⌘ K</kbd>
+          {search.trim()&&<div className="search-results"><span className="eyebrow">BROWSER ASSET RESULTS</span>{results.length?results.map(asset=><button type="button" key={asset.id} onClick={()=>{go('asset/'+encodeURIComponent(asset.id));setSearch('')}}><AssetGlyph asset={asset}/><span><strong>{asset.name}</strong><small>{asset.category}</small></span><ArrowRight size={16}/></button>):<p>No registered assets match your search.</p>}</div>}
         </div>
         <div className="topbar-actions"><span className="demo-flag">PREVIEW</span><button type="button" className="icon-button" onClick={()=>setTheme(t=>t==='dark'?'light':'dark')} aria-label={theme==='dark'?'Switch to light theme':'Switch to dark theme'}>{theme==='dark'?<Sun size={20}/>:<Moon size={20}/>}</button><div className="notification-anchor"><button type="button" className="icon-button" aria-label="Show locally derived reminders" aria-expanded={notificationsOpen} onClick={()=>setNotificationsOpen(p=>!p)}><Bell size={19}/>{unreadAlerts.length>0&&<span className="notification-dot"/>}</button>{notificationsOpen&&<div className="notification-menu"><strong>Local reminders · {unreadAlerts.length} unread</strong>{localAlerts.length?localAlerts.slice(0,3).map(alert=><button type="button" key={alert.key} onClick={()=>{setNotificationsOpen(false);go('notifications')}}><span>{alert.title}</span><small>{alert.kind.replaceAll('_',' ')} · {alert.date} · {alert.state.toLowerCase()}</small></button>):<p>No recorded alerts in your local reminder horizon.</p>}<button type="button" onClick={()=>{setNotificationsOpen(false);go('notifications')}}><span>Open all local reminders →</span><small>No push or external delivery</small></button></div>}</div><div className="account-chip"><span>AO</span><div><strong>Preview workspace</strong><small>Local demo mode</small></div><ChevronDown size={15}/></div></div>
       </header>
-      <main className="main-content">{page==='dashboard'?<Dashboard items={items} store={store} onSelect={a=>go('asset/'+encodeURIComponent(a.id))} onPlanned={openPlanned} onAlert={openAlert}/>:page==='registry'?<RegistryExperience key={path} path={path} store={store} onChange={handleChange} navigate={go} report={report}/>:page==='lifecycle'?<LifecycleExperience key={path} path={path} store={store} onChange={handleChange} navigate={go} report={report}/>:page==='economics'?<EconomicsExperience key={path} path={path} store={store} onChange={handleChange} navigate={go} report={report}/>:page==='operations'?<OperationsExperience key={path} path={path} store={store} onChange={handleChange} navigate={go} report={report}/>:page==='intelligence'?<IntelligenceExperience key={path} path={path} store={store} onChange={handleChange} navigate={go} report={report}/>:page==='governance'?<GovernanceExperience key={path} path={path} store={store} onChange={handleChange} navigate={go} report={report}/>:page==='design'?<DesignSystem openModal={()=>setDialog({title:'Reusable dialog',description:'This is a working, keyboard-dismissable modal using the Asset OS dialog component.'})}/>:page==='roadmap'?<Roadmap onPhase={openPlanned} onRoute={go} firstAssetId={store.records[0]?.id||null}/>:<Planned title={plannedTitle} phase={plannedPhase}/>}
+      <main className="main-content" id="main-content" tabIndex={-1}>{page==='dashboard'?<Dashboard items={items} store={store} onSelect={a=>go('asset/'+encodeURIComponent(a.id))}/>:page==='registry'?<RegistryExperience key={path} path={path} store={store} onChange={handleChange} navigate={go} report={report}/>:page==='lifecycle'?<LifecycleExperience key={path} path={path} store={store} onChange={handleChange} navigate={go} report={report}/>:page==='economics'?<EconomicsExperience key={path} path={path} store={store} onChange={handleChange} navigate={go} report={report}/>:page==='operations'?<OperationsExperience key={path} path={path} store={store} onChange={handleChange} navigate={go} report={report}/>:page==='intelligence'?<IntelligenceExperience key={path} path={path} store={store} onChange={handleChange} navigate={go} report={report}/>:page==='governance'?<GovernanceExperience key={path} path={path} store={store} onChange={handleChange} navigate={go} report={report}/>:page==='design'?<DesignSystem openModal={()=>setDialog({title:'Reusable dialog',description:'This is a working, keyboard-dismissable modal using the Asset OS dialog component.'})}/>:page==='roadmap'?<Roadmap onPhase={openPlanned} onRoute={go} firstAssetId={store.records[0]?.id||null}/>:<Planned title={plannedTitle} phase={plannedPhase}/>}
         <footer className="app-footer"><span>© 2026 Asset OS · Personal Kernel ecosystem · Prototype only</span><div><button type="button" onClick={()=>go('roadmap')}><BookOpen size={14}/> Screen plan</button><a href="https://github.com/Sean-steve/Asset-Os" target="_blank" rel="noreferrer"><ExternalLink size={14}/> GitHub repository</a></div></footer>
       </main>
     </div>
