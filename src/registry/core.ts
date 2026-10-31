@@ -167,7 +167,7 @@ export function createAsset(state:RegistryState,input:AssetInput,at=new Date().t
   const id=uid()
   const record:AssetRecord={...copy(input),name:input.name.trim(),id,number:'AST-'+String(num).padStart(3,'0'),createdAt:at,updatedAt:at,origin:'local'}
   return {...state,records:[record,...state.records],activity:[{
-    id:uid(),assetId:id,assetName:record.name,event:'REGISTERED',details:'Asset registered in browser-only workspace',at
+    id:uid(),assetId:id,assetName:record.name,event:'REGISTERED' as const,details:'Asset registered in browser-only workspace',at
   },...state.activity].slice(0,500)}
 }
 export function updateAsset(state:RegistryState,id:string,input:AssetInput,at=new Date().toISOString()):RegistryState {
