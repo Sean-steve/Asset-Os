@@ -1,6 +1,6 @@
 # Asset OS — Screen Implementation Matrix
 
-**Total:** 60 screens (60 principal product experiences). Phases 1–3 (Screens 01–30) are implemented as a frontend prototype; no backend, production data or Kernel integration is connected.
+**Total:** 60 screens (60 principal product experiences). Phases 1–4 (Screens 01–40) are implemented as a frontend prototype; no backend, production data or Kernel integration is connected.
 
 | Phase | Screen IDs | Feature area | Current status |
 | --- | --- | --- | --- |
@@ -8,7 +8,7 @@
 | 1 | 01–10 | Command Center, registry, asset details, add/edit, classification, tags, advanced search, activity, type-specific views | **Implemented (frontend-only)** |
 | 2 | 11–20 | Acquisition center and wizard, acquisition details, cost basis, lifecycle, ownership center/details/transfer, disposition wizard and history | **Implemented (frontend-only)** |
 | 3 | 21–30 | Draft/review valuations, history, financing terms and observations, income/expenses, cash flow, ROI and reconciliation | **Implemented (frontend-only)** |
-| 4 | 31–40 | Maintenance, insurance and utilization | Planned |
+| 4 | 31–40 | Maintenance plans/jobs, insurance and renewals, utilization, evidence, locations, relationships and operational calendar | **Implemented (frontend-only)** |
 | 5 | 41–50 | Portfolio, intelligence and risk | Planned |
 | 6 | 51–60 | Kernel integration and administration | Planned |
 | 7 | All | Cross-role and responsive experience certification | Planned |
@@ -86,6 +86,36 @@
 - Attach external transaction references without asserting a verified match or triggering payments.
 - Respect disposed and archived lifecycle guards; no financial-entry commands allowed after exit.
 - Maintain the premium dark UI, connected contextual navigation and responsive states.
+
+## Phase 4 screen contracts
+
+| Screen | Route | Primary behavior |
+| --- | --- | --- |
+| 31 Maintenance Center | `#/maintenance` | Overview of plans, due dates, service jobs and navigable workflows |
+| 32 Maintenance Plans | `#/maintenance/plans` | Create, pause/resume recurring schedules; deterministic next-due calculation |
+| 33 Maintenance Events / Work Orders | `#/maintenance/jobs` | Schedule/start/cancel/complete jobs; completion cost stays off Finance OS |
+| 34 Insurance Center | `#/insurance` | List manually entered coverage references; determine date-based expiry |
+| 35 Insurance Policy Detail / Renewal | `#/insurance/policies/:id`, `#/insurance/new` | Policy history, cancel and superseding renewal records |
+| 36 Utilization Dashboard | `#/utilization` | Enter cumulative manual readings by asset and metric |
+| 37 Utilization Detail | `#/utilization/:assetId` | Observed source, chronological totals and deltas (no fabricated telemetry) |
+| 38 Documents & Evidence References | `#/evidence` | Metadata-only references and expiry dates; no document upload |
+| 39 Locations & Asset Relationships | `#/locations` | Effective-dated location changes and cycle-safe asset relation graph |
+| 40 Operational Calendar | `#/operations-calendar` | Read-only timeline of recorded service due/scheduled dates and expiries |
+
+### Phase 4 acceptance rules
+
+- Preserve v1/v2/v3 browser snapshots through v4 migration and maintain all phase histories.
+- Only acquired, active and suspended assets accept new operational commands.
+- Maintenance recurrences support DAYS, WEEKS and MONTHS, with robust month-end handling; pausing plans disables due projections.
+- Service job completion is terminal and records a local unposted cost; advancing a plan's due date preserves history.
+- Insurance coverage is a *user-entered reference* and is never called verified or legally accepted.
+- Renewal creates a new policy record and preserves the superseded record; cancellation does not notify insurers.
+- Utilization readings are effective-dated, cumulative, monotonic for each metric, and manually sourced; no fake telemetry, occupancy-rate or efficiency trend.
+- Evidence is metadata-only: no binary file, URL, policy secret, title document or secure-file claim.
+- Location changes are effective-dated with a previous-label history; generic asset edits cannot overwrite a recorded location change.
+- Component and dependency relations cannot be circular or self-referential.
+- Calendar only derives actual recorded operational dates, excludes disposed/archived assets from active reminders, and cannot change Human Kernel schedule authority.
+- No automatic Finance OS expense/payment, Mission OS tasks, third-party work order dispatch or calendar notification.
 
 ## Functional acceptance
 

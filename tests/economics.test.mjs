@@ -33,31 +33,31 @@ function facility(state,assetId){
 function flow(state,assetId,type,amount,category,occurredOn='2026-10-15'){
  return recordFlow(state,{assetId,type,category,amount,occurredOn,counterpartyLabel:'Sample party',notes:'Local test only'},AT)
 }
-test('screens 21–30 are implemented and phases 4–6 remain planned',()=>{
+test('Phase 3 routes remain available as Phase 4 is implemented',()=>{
  assert.equal(screens.length,60)
  assert.deepEqual(screens.slice(20,30).map(s=>s.id),[21,22,23,24,25,26,27,28,29,30])
- assert.equal(screens.filter(s=>s.status==='implemented').length,30)
- assert.equal(screens.filter(s=>s.status==='planned').length,30)
+ assert.equal(screens.filter(s=>s.status==='implemented').length,40)
+ assert.equal(screens.filter(s=>s.status==='planned').length,20)
  const ui=readFileSync(new URL('../src/economics/EconomicsExperience.tsx',import.meta.url),'utf8')
  for(const path of ['valuations','valuations/new','valuation-history','financing','income-expenses','cash-flow','economics','reconciliation'])assert.ok(ui.includes("'"+path+"'"))
 })
 test('Phase 1 v1 and Phase 2 v2 snapshots migrate without discarding assets or histories',()=>{
  const source=initialRegistry()
  const older1={...source,version:1}
- delete older1.phase2;delete older1.phase3
+ delete older1.phase2;delete older1.phase3;delete older1.phase4
  const v1=loadRegistry({getItem:()=>JSON.stringify(older1)})
- assert.equal(v1.version,3)
+ assert.equal(v1.version,4)
  assert.equal(v1.records.length,5)
  assert.deepEqual(v1.phase3,emptyFinanceData())
  const old2={...source,version:2}
- delete old2.phase3
+ delete old2.phase3;delete old2.phase4
  const v2=loadRegistry({getItem:()=>JSON.stringify(old2)})
- assert.equal(v2.version,3)
+ assert.equal(v2.version,4)
  assert.equal(v2.records[0].id,source.records[0].id)
  assert.deepEqual(v2.phase2,source.phase2)
  const save=new Map()
  assert.equal(saveRegistry(v2,{setItem:(key,value)=>save.set(key,value)}),true)
- assert.equal(JSON.parse(save.get(STORE_KEY)).version,3)
+ assert.equal(JSON.parse(save.get(STORE_KEY)).version,4)
  assert.ok(loadRegistry({getItem:()=>JSON.stringify({...source,phase3:[]})}).phase3.valuations.length===0)
 })
 test('original synthetic assets contain no invented valuations, finance records or transactions',()=>{
