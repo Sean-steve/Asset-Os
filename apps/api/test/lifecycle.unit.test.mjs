@@ -49,11 +49,11 @@ test('ownership dimensions reject percentage in legal/control and require positi
 })
 test('OpenAPI explicitly implements B2 command, read and ETag contracts but keeps finance/ops deferred',()=>{
  const openapi=JSON.parse(readFileSync(new URL('../openapi/openapi.json',import.meta.url),'utf8'))
- assert.equal(openapi.info.version,'0.3.0-b2')
+ assert.equal(openapi.info.version,'0.4.0-b3')
  assert.ok(openapi.paths['/v1/assets/{assetId}/lifecycle-actions'].post.responses['200'])
  assert.ok(!openapi.paths['/v1/assets/{assetId}/lifecycle-actions'].post.responses['201'])
  assert.equal(openapi.paths['/v1/acquisitions'].get.responses['200'].content['application/json'].schema.$ref,'#/components/schemas/DomainHistoryPage')
- assert.equal(CONTRACT_VERSION,'2026-10-31.b2')
+ assert.equal(CONTRACT_VERSION,'2026-10-31.b3')
  assert.ok(B2_CAPABILITIES.includes('lifecycle_guarded_transitions'))
  for(const url of ['/v1/assets/{assetId}/lifecycle-actions','/v1/assets/{assetId}/acquisitions',
   '/v1/assets/{assetId}/ownership-interests','/v1/assets/{assetId}/ownership-transfers','/v1/assets/{assetId}/disposition']){
@@ -63,7 +63,7 @@ test('OpenAPI explicitly implements B2 command, read and ETag contracts but keep
   assert.ok(op.parameters.some(p=>p.name==='Idempotency-Key'&&p.required))
   assert.deepEqual(op.security,[{KernelBearer:[]}])
  }
- assert.equal(openapi.paths['/v1/assets/{assetId}/valuations'].post['x-runtime-status'],'NOT_IMPLEMENTED_IN_B0')
+ assert.equal(openapi.paths['/v1/assets/{assetId}/valuations'].post['x-runtime-status'],'IMPLEMENTED_B3')
  const events=JSON.parse(readFileSync(new URL('../openapi/events.json',import.meta.url),'utf8'))
  assert.equal(events.transport,'NOT_CONFIGURED')
  assert.ok(events.allowedEmissions.some(e=>e.type==='asset.disposition.recorded.v1'))
