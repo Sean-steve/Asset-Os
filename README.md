@@ -2,6 +2,10 @@
 
 **Frontend: Phase 7 certified — 60/60 screen experiences. Backend: Phase B2 lifecycle, acquisition, ownership and disposition PostgreSQL services implemented (live identity and backend deployment still unconfigured).** The hosted Pages frontend remains a browser-local preview outside the separate Secure Registry. Five starter assets are clearly illustrative; user-entered asset, ownership, finance, operation and portfolio changes persist in local browser storage only. Dashboard valuation history and operational alerts now derive only from recorded data, with honest empty states rather than synthetic activity.
 
+## Phase B2.1 — Authenticated Lifecycle Frontend Integration
+
+The separate Secure Lifecycle route (#/server-registry/asset/:id/lifecycle) provides a verified tenant PostgreSQL workflow for acquisition, cost basis, ownership assignments/transfers, lifecycle control and disposition. Every write requires a server-verified role, ETag and idempotency key. Errors never fall back to local sample data. Live identity issuer/staging activation is still pending. [B2.1 staging guide](docs/BACKEND_B2_1.md).
+
 ## Phase B2 — PostgreSQL Lifecycle, Acquisition & Ownership
 
 Backend B2 implements guarded lifecycle transitions, initial acquisitions, itemized cost basis, effective-dated economic/beneficial ownership and non-percentage legal/control claims, partial transfers, disposition and terminal archival. Verified tenant membership, ETag concurrency, idempotency, audit and PENDING outbox events are mandatory.
