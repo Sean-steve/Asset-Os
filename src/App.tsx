@@ -54,7 +54,7 @@ const trendData: Record<Period, number[]> = {
   '1Y':[12.0,13.1,14.3,15.0,16.7,18.0,19.4,20.8,22.2,23.7,23.4,24.85],
   '5Y':[3.9,4.8,6.6,7.1,8.4,10.6,11.7,13.9,16.2,19.4,21.7,24.85],
 }
-const short = (amount: number) => amount >= 1_000_000 ? 'KES ' + (amount / 1_000_000).toFixed(2) + 'M' : 'KES ' + (amount / 1_000).toFixed(0) + 'K'
+const short = (amount: number) => amount >= 1_000_000 ? 'KES ' + (amount / 1_000_000).toFixed(2) + 'M' : amount >= 1_000 ? 'KES ' + (amount / 1_000).toFixed(0) + 'K' : 'KES ' + Intl.NumberFormat('en-KE').format(amount)
 const go = (route: string) => { window.location.hash = '/' + route }
 const currentPath = () => decodeURIComponent(window.location.hash.replace(/^#\/?/, '')) || 'dashboard'
 const getPage = (path: string): Page =>
@@ -62,7 +62,7 @@ const getPage = (path: string): Page =>
 const slug = (value: string) => value.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
 const toneFor = (tone: string) => 'tone-' + tone
 const currency = (amount:number,code:string) => new Intl.NumberFormat('en-KE',{maximumFractionDigits:2}).format(amount)+' '+code
-const viewAsset = (a:AssetRecord):Asset => ({id:a.id,name:a.name,category:a.category,subtype:a.subcategory,value:a.value,equity:a.equity,status:a.lifecycle==='ACTIVE'?'Active':'Review',icon:({ 'Real Estate':'building',Vehicles:'car',Investments:'chart',Business:'briefcase','Digital Assets':'server' } as Record<string,string>)[a.category]||'layers',color:({ 'Real Estate':'#478ffa',Vehicles:'#45cba4',Investments:'#f0bf63',Business:'#f58c63','Digital Assets':'#a384f5' } as Record<string,string>)[a.category]||'#95a9c9',currency:a.currency})
+const viewAsset = (a:AssetRecord):Asset => ({id:a.id,name:a.name,category:a.category,subtype:a.subcategory,value:a.value,equity:a.equity,status:a.lifecycle==='ACTIVE'?'Active':a.lifecycle.split('_').map(s=>s[0]+s.slice(1).toLowerCase()).join(' '),icon:({ 'Real Estate':'building',Vehicles:'car',Investments:'chart',Business:'briefcase','Digital Assets':'server' } as Record<string,string>)[a.category]||'layers',color:({ 'Real Estate':'#478ffa',Vehicles:'#45cba4',Investments:'#f0bf63',Business:'#f58c63','Digital Assets':'#a384f5' } as Record<string,string>)[a.category]||'#95a9c9',currency:a.currency})
 
 function Brand() {
   return <div className="brand">
