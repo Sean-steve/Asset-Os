@@ -246,3 +246,82 @@ test('B2.1 lifecycle server failure never falls back to browser-local preview re
  await expect(page.getByRole('heading',{name:'Complete initial acquisition'})).toHaveCount(0)
  await expect(page.getByText('No authenticated initial acquisition has been recorded.')).toHaveCount(0)
 })
+
+
+test('B3.1 unactivated financial workspace fails closed without a trusted identity or sample financial rows',async({page})=>{
+ await page.goto('./#/server-registry/economics')
+ await expect(page.getByText('Production identity is not activated')).toBeVisible()
+ await expect(page.getByText('Record draft valuation')).toHaveCount(0)
+ await expect(page.getByText('Riverside Apartments')).toHaveCount(0)
+})
+
+async function setupEconomics(page,role='WORKSPACE_OWNER'){
+ await setup(page,{membership:{...member,role},assets:[{...record,lifecycle:'ACTIVE',recordVersion:7}]})
+ const calls=[]
+ const current={version:7,valuations:[],flows:[]}
+ const base='/v1/assets/'+record.id
+ const response=(route,body,status=200)=>route.fulfill({status,contentType:'application/json',
+  headers:{'access-control-allow-origin':'*','access-control-expose-headers':'etag, idempotent-replayed'},
+  body:JSON.stringify(body)})
+ await page.route(api+'/**',async route=>{
+  const request=route.request(),path=new URL(request.url()).pathname,method=request.method()
+  if(method==='OPTIONS'||path==='/v1/me'||path==='/v1/assets')return route.fallback()
+  if(path===base&&method==='GET')return response(route,{...record,lifecycle:'ACTIVE',recordVersion:current.version})
+  if(path===base+'/economics'&&method==='GET')return response(route,{
+   assetId:record.id,currency:'KES',lifecycle:'ACTIVE',recordVersion:current.version,
+   selectedValue:'1250000.00',valueSource:'UNVERIFIED_REGISTRY_ENTRY',acceptedValuation:null,originalCostBasis:'1000000.00',
+   financing:{facilityCount:1,missingBalanceCount:1,debtBalance:null,sourceAuthority:'USER_ENTERED_SNAPSHOTS',asOf:null},
+   indicativeEquity:null,observedCashFlow:{totals:{INCOME:'0.00',EXPENSE:'0.00',CAPEX:'0.00',FINANCING_INFLOW:'0.00',FINANCING_OUTFLOW:'0.00'},operatingNet:'0.00',includesFinancingInNet:false,sourceAuthority:'USER_ENTRIES_NOT_FINANCE_OS'},
+   indicativeValueChange:'250000.00',indicativeChangePercent:'25.00',interpretation:'Unverified manual evidence'
+  })
+  if(path===base+'/valuations'&&method==='GET')return response(route,{items:current.valuations,nextCursor:null,limit:20})
+  if(path===base+'/financing'&&method==='GET')return response(route,{items:[{id:'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee',financierLabel:'Manual lender',originalPrincipal:'800000.00',
+   currency:'KES',interestRatePct:'12.5',startedOn:'2026-10-01',maturesOn:null,frequency:'MONTHLY',reference:'',latestOutstanding:null,balanceObservedOn:null}]})
+  if(path===base+'/cash-flows'&&method==='GET')return response(route,{items:current.flows,nextCursor:null,limit:20})
+  if(path===base+'/reconciliation-references'&&method==='GET')return response(route,{items:[]})
+  if(path===base+'/valuations'&&method==='POST'){
+   calls.push({path,headers:request.headers(),body:JSON.parse(request.postData()||'{}')})
+   if(request.headers()['if-match']!=='"'+current.version+'"')return response(route,{error:{code:'RECORD_VERSION_CONFLICT',message:'Stale version'}},412)
+   const valuation={id:'ffffffff-ffff-4fff-8fff-ffffffffffff',currency:'KES',status:'DRAFT',recordedAt:new Date().toISOString(),
+    acceptedAt:null,...JSON.parse(request.postData()||'{}')}
+   current.valuations.unshift(valuation)
+   current.version++
+   return response(route,{asset:{...record,lifecycle:'ACTIVE',recordVersion:current.version},valuation},201)
+  }
+  return route.fallback()
+ })
+ return {calls,current}
+}
+test('B3.1 authenticated values are server-derived, unknown debt is preserved and writes carry optimistic/idempotent metadata',async({page})=>{
+ const {calls}=await setupEconomics(page)
+ await authenticate(page)
+ await page.goto('./#/server-registry/asset/'+record.id+'/economics')
+ await expect(page.getByRole('heading',{name:'Recorded outstanding debt'})).toHaveCount(0)
+ await expect(page.getByText('1 facility balances missing')).toBeVisible()
+ await expect(page.getByText('1250000.00', {exact:true})).toHaveCount(0)
+ await expect(page.getByText('No valuations recorded in PostgreSQL.')).toBeVisible()
+ await page.getByLabel('Valuation amount').fill('1275000.50')
+ await page.getByLabel('Valuation source description').fill('Owner comparison note')
+ await page.getByRole('button',{name:'Record valuation draft'}).click()
+ await expect.poll(()=>calls.length).toBe(1)
+ expect(calls[0].headers.authorization).toMatch(/^Bearer test-access-token/)
+ expect(calls[0].headers['x-tenant-id']).toBe(tenant)
+ expect(calls[0].headers['if-match']).toBe('"7"')
+ expect(calls[0].headers['idempotency-key'].length).toBeGreaterThanOrEqual(8)
+ expect(calls[0].body).toMatchObject({amount:'1275000.50',method:'MANUAL_ESTIMATE',confidence:'LOW',sourceLabel:'Owner comparison note'})
+ expect(calls[0].body).not.toHaveProperty('currency')
+ expect(calls[0].body).not.toHaveProperty('sourceAuthority')
+ await expect(page.getByText('KES 1,275,000.50')).toBeVisible()
+ await expect(page.getByText('1 facility balances missing')).toBeVisible()
+ const store=await page.evaluate(()=>JSON.stringify(localStorage))
+ expect(store).not.toContain('Owner comparison note')
+})
+test('B3.1 verified portfolio analyst has read-only financial evidence and no write controls',async({page})=>{
+ await setupEconomics(page,'PORTFOLIO_ANALYST')
+ await authenticate(page)
+ await page.goto('./#/server-registry/asset/'+record.id+'/economics')
+ await expect(page.getByText('Your verified tenant role is read-only.')).toBeVisible()
+ await expect(page.getByRole('button',{name:'Record valuation draft'})).toHaveCount(0)
+ await expect(page.getByRole('button',{name:'Record financing facility'})).toHaveCount(0)
+ await expect(page.getByText('1 facility balances missing')).toBeVisible()
+})
