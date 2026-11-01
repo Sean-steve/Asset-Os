@@ -1,6 +1,12 @@
 # Asset OS — Personal Kernel Asset Intelligence
 
-**Frontend: Phase 7 certified — 60/60 screen experiences. Backend: Phase B3 valuation, financing and economics PostgreSQL services implemented (live identity and backend deployment still unconfigured).** The hosted Pages frontend remains a browser-local preview outside the separate Secure Registry. Five starter assets are clearly illustrative; user-entered asset, ownership, finance, operation and portfolio changes persist in local browser storage only. Dashboard valuation history and operational alerts now derive only from recorded data, with honest empty states rather than synthetic activity.
+**Frontend: Phase 7 certified — 60/60 preview screen experiences, plus B3.1 Secure Economics API-backed screens. Backend: Phase B3 PostgreSQL valuation, financing and economics implemented (live identity and backend deployment still unconfigured).** The hosted Pages frontend remains a browser-local preview outside the separate Secure Registry. Five starter assets are clearly illustrative; user-entered asset, ownership, finance, operation and portfolio changes persist in local browser storage only. Dashboard valuation history and operational alerts now derive only from recorded data, with honest empty states rather than synthetic activity.
+
+## Phase B3.1 — Secure Economics Frontend Integration
+
+A separate **Secure Economics** workspace is now available at `#/server-registry/economics` and `#/server-registry/asset/:id/economics`. It uses the existing B1.1 PKCE authenticated tenant session and all B3 financial APIs to display PostgreSQL-authoritative histories, financing observations, server-derived economic summaries, and versioned/idempotent write workflows for verified operator roles. Unknown loan balances remain unknown, and browser-local sample records are never imported into the protected workspace.
+
+**Not live-activated:** a trusted real OIDC issuer and HTTPS backend staging deployment. Existing Phase 3 financial pages remain browser preview screens and are not replaced or synced. Automated B3.1 browser checks simulate the API and do not certify live money integrations. See [B3.1 Frontend & Staging Guide](docs/BACKEND_B3_1.md).
 
 ## Phase B3 — Valuation, Financing & Economics Backend
 

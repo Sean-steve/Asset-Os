@@ -1,0 +1,29 @@
+.server-economics{display:grid;gap:18px;min-width:0}
+.server-economics .server-panel{min-width:0}
+.server-economics .server-panel h2{display:flex;align-items:center;gap:10px}
+.server-economics .server-panel .server-note{margin:0 0 16px}
+.server-economics .asset-table td{vertical-align:middle}
+.server-economics .asset-table td small{display:block;font-size:11px;color:var(--muted);margin-top:4px}
+.server-economics .asset-table .link-button{display:inline-flex;align-items:center;gap:6px}
+.server-economics .server-boundary{align-items:flex-start}
+.server-econ-kpis{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+.server-econ-kpis>div{border:1px solid var(--line);background:var(--panel);border-radius:14px;padding:18px;min-width:0;display:grid;gap:7px}
+.server-econ-kpis small{font-size:11px;color:var(--muted);font-weight:700;letter-spacing:.025em}
+.server-econ-kpis strong{font-size:clamp(15px,1.6vw,23px);letter-spacing:-.03em;overflow-wrap:anywhere}
+.server-econ-kpis span{font-size:11px;color:var(--muted);line-height:1.45}
+.server-econ-badge{padding:5px 9px;background:var(--panel-2);border-radius:8px;color:var(--muted);font-size:11px;font-weight:700}
+.server-econ-badge.accepted{background:rgba(32,178,127,.12);color:#38c89e}
+.server-econ-commands{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px;align-items:start}
+.server-econ-form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px}
+.server-econ-form label{display:grid;gap:7px;font-size:12px;color:var(--muted);min-width:0}
+.server-econ-form textarea{min-height:75px;resize:vertical}
+.server-econ-form button[type=submit]{justify-self:start;grid-column:1/-1}
+.server-econ-form :is(input,select,textarea){width:100%;min-width:0}
+.server-econ-subhistory{margin-top:18px;border-top:1px solid var(--line);padding-top:16px}
+.server-econ-subhistory h3{font-size:15px;margin:0 0 13px}
+.server-econ-foot{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.server-econ-foot span{display:inline-flex;gap:7px;align-items:center;color:var(--muted);font-size:12px}
+.server-econ-foot .secondary-button{display:inline-flex;align-items:center;gap:7px}
+@media(max-width:1080px){.server-econ-commands{grid-template-columns:1fr}}
+@media(max-width:780px){.server-econ-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:560px){.server-econ-kpis,.server-econ-form{grid-template-columns:1fr}.server-econ-kpis strong{font-size:19px}}
