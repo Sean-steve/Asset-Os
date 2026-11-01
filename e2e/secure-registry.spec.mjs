@@ -311,7 +311,7 @@ test('B3.1 authenticated values are server-derived, unknown debt is preserved an
  expect(calls[0].body).toMatchObject({amount:'1275000.50',method:'MANUAL_ESTIMATE',confidence:'LOW',sourceLabel:'Owner comparison note'})
  expect(calls[0].body).not.toHaveProperty('currency')
  expect(calls[0].body).not.toHaveProperty('sourceAuthority')
- await expect(page.getByText('KES 1,275,000.50')).toBeVisible()
+ await expect(page.getByText('KES 1,275,000.50').first()).toBeVisible()
  await expect(page.getByText('1 facility balances missing')).toBeVisible()
  const store=await page.evaluate(()=>JSON.stringify(localStorage))
  expect(store).not.toContain('Owner comparison note')
