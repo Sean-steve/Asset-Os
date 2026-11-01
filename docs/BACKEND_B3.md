@@ -4,7 +4,7 @@
 
 B3 is a versioned PostgreSQL backend implementation. It uses cryptographically verified OIDC access tokens, an active tenant membership, restricted PostgreSQL runtime role, FORCE RLS, strong asset ETags, operation idempotency and atomic actor audit / pending outbox records.
 
-The backend is NOT hosted in production. There is no real Personal Kernel/OIDC issuer configured here, no external bank feed, no Finance OS ledger connection and no B3 server-verified financial frontend. Existing GitHub Pages remains a frontend preview with separate Secure Registry / Secure Lifecycle features; B3 financial screens remain browser-local until explicitly migrated.
+The backend is NOT hosted in production. There is no real Personal Kernel/OIDC issuer configured here, no external bank feed, no Finance OS ledger connection and no B3 server-verified financial frontend. Existing GitHub Pages remains a frontend preview with separate Secure Registry / Secure Lifecycle features; B3 financial preview screens remain browser-local; B3.1 adds separate authenticated Secure Economics screens.
 
 ## PostgreSQL domain model (migration 0006)
 
@@ -51,6 +51,6 @@ CI runs six checksummed PostgreSQL migrations, strict backend TypeScript and uni
 
 ## Next delivery
 
-B3.1 should connect separate Secure Economics screens to the B3 API, without importing browser-local sample financial entries. A protected HTTPS backend and vetted real Personal Kernel/OIDC issuer must be provisioned before claiming real staging/production activation. B4 will implement server-authoritative operations/maintenance/insurance.
+B3.1 implements separate Secure Economics screens wired to the B3 API, without importing browser-local sample financial entries. See BACKEND_B3_1.md. A protected HTTPS backend and vetted real Personal Kernel/OIDC issuer must be provisioned before claiming real staging/production activation. B4 will implement server-authoritative operations/maintenance/insurance.
 
 No claims of actual wealth, loan repayment, financial ledger, bank reconciliation, payment, legal-title verification or certified asset appraisal are made in B3.
