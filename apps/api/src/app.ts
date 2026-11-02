@@ -5,7 +5,7 @@ import {randomUUID} from 'node:crypto'
 import type {Pool} from 'pg'
 import {checkReadiness,type TenantSqlClient} from './database.js'
 import {
- API_VERSION,CONTRACT_VERSION,B3_CAPABILITIES,identityNotConfigured
+ API_VERSION,CONTRACT_VERSION,B4_CAPABILITIES,identityNotConfigured
 } from './contracts.js'
 import {
  ApiFault,authenticate,requireMembership,requireRole,selectTenant,
@@ -16,6 +16,7 @@ import {createAsset,getAsset,listAssets,updateAsset,etag} from './registry.js'
 import {startOrTransition,acquire,assignInterest,transferInterest,dispose,lifecycleSnapshot,listDomainHistory} from './lifecycle.js'
 import type {FastifyReply} from 'fastify'
 import {recordValuation,acceptValuation,recordFacility,observeBalance,recordCashFlow,recordReconciliationReference,listEvidence,listFacilities,listReferences,economicsSummary} from './economics.js'
+import {recordPlan,planAction,recordJob,jobAction,recordPolicy,policyAction,recordReading,recordEvidence,recordLocation,recordRelation,listOperations,operationsSummary,operationsCalendar} from './operations.js'
 
 type PoolPort=Pick<Pool,'query'|'end'> & Partial<Pick<Pool,'connect'>>
 const openapi=JSON.parse(readFileSync(new URL('../openapi/openapi.json',import.meta.url),'utf8')) as object
@@ -55,16 +56,16 @@ export function buildApp(pool:PoolPort,verifier:OidcVerifier|null=null){
   reply.header('X-Frame-Options','DENY')
   return payload
  })
- app.get('/health/live',async()=>({status:'ok',service:'asset-os-api',phase:'B3'}))
+ app.get('/health/live',async()=>({status:'ok',service:'asset-os-api',phase:'B4'}))
  app.get('/health/ready',async(_request,reply)=>{
-  try{if(await checkReadiness(pool))return {status:'ready',database:'reachable',schema:'b3'}}
+  try{if(await checkReadiness(pool))return {status:'ready',database:'reachable',schema:'b4'}}
   catch{/* redact details including connection strings */}
   return reply.code(503).send({status:'unready',database:'unavailable'})
  })
  app.get('/v1/meta',async()=>({
   apiVersion:API_VERSION,contractVersion:CONTRACT_VERSION,phase:'B3',
   runtimeDomainAccess:verifier?'OIDC_CONFIGURED_MEMBERSHIP_REQUIRED':'IDENTITY_NOT_CONFIGURED',
-  frontendConnection:'NOT_CONNECTED',capabilities:B3_CAPABILITIES
+  frontendConnection:'NOT_CONNECTED',capabilities:B4_CAPABILITIES
  }))
  app.get('/v1/openapi.json',async()=>openapi)
 
@@ -229,7 +230,61 @@ export function buildApp(pool:PoolPort,verifier:OidcVerifier|null=null){
    recordReconciliationReference(client,member,assetId(req),req.body,h.ifMatch,h.key,id))
   return b3Command(reply,out)
  })
- // Future B4 operational services, portfolio execution and external integrations remain blocked.
+ // B4: all operational commands use the B1 OIDC+tenant transaction and
+ // B3 strong asset If-Match, idempotency and atomic audit/outbox semantics.
+ app.get('/v1/assets/:assetId/operations',async req=>
+  authorized(req,'read',async(client,member)=>operationsSummary(client,member.tenantId,assetId(req))))
+ app.get('/v1/assets/:assetId/operations-calendar',async req=>
+  authorized(req,'read',async(client,member)=>operationsCalendar(client,member.tenantId,assetId(req))))
+ function b4List(kind:Parameters<typeof listOperations>[3]){
+  return async(req:{params:unknown;headers:Record<string,string|string[]|undefined>;query:unknown})=>
+   authorized(req,'read',async(client,member)=>listOperations(client,member.tenantId,assetId(req),kind,req.query))
+ }
+ for(const kind of ['maintenance-plans','service-jobs','insurance-policies','utilization-readings',
+  'evidence-references','location-events','asset-relationships'] as const)
+  app.get('/v1/assets/:assetId/'+kind,b4List(kind))
+ app.post('/v1/assets/:assetId/maintenance-plans',async(req,reply)=>{
+  const h=b2Headers(req);return commandResponse(reply,await authorized(req,'write',async(c,m,id)=>
+   recordPlan(c,m,assetId(req),req.body,h.ifMatch,h.key,id)))
+ })
+ app.post('/v1/assets/:assetId/maintenance-plans/:planId/actions',async(req,reply)=>{
+  const h=b2Headers(req);return commandResponse(reply,await authorized(req,'write',async(c,m,id)=>
+   planAction(c,m,assetId(req),(req.params as {planId:string}).planId,req.body,h.ifMatch,h.key,id)))
+ })
+ app.post('/v1/assets/:assetId/service-jobs',async(req,reply)=>{
+  const h=b2Headers(req);return commandResponse(reply,await authorized(req,'write',async(c,m,id)=>
+   recordJob(c,m,assetId(req),req.body,h.ifMatch,h.key,id)))
+ })
+ app.post('/v1/assets/:assetId/service-jobs/:jobId/actions',async(req,reply)=>{
+  const h=b2Headers(req);return commandResponse(reply,await authorized(req,'write',async(c,m,id)=>
+   jobAction(c,m,assetId(req),(req.params as {jobId:string}).jobId,req.body,h.ifMatch,h.key,id)))
+ })
+ app.post('/v1/assets/:assetId/insurance-policies',async(req,reply)=>{
+  const h=b2Headers(req);return commandResponse(reply,await authorized(req,'write',async(c,m,id)=>
+   recordPolicy(c,m,assetId(req),req.body,h.ifMatch,h.key,id)))
+ })
+ app.post('/v1/assets/:assetId/insurance-policies/:policyId/actions',async(req,reply)=>{
+  const h=b2Headers(req);return commandResponse(reply,await authorized(req,'write',async(c,m,id)=>
+   policyAction(c,m,assetId(req),(req.params as {policyId:string}).policyId,req.body,h.ifMatch,h.key,id)))
+ })
+ app.post('/v1/assets/:assetId/utilization-readings',async(req,reply)=>{
+  const h=b2Headers(req);return commandResponse(reply,await authorized(req,'write',async(c,m,id)=>
+   recordReading(c,m,assetId(req),req.body,h.ifMatch,h.key,id)))
+ })
+ app.post('/v1/assets/:assetId/evidence-references',async(req,reply)=>{
+  const h=b2Headers(req);return commandResponse(reply,await authorized(req,'write',async(c,m,id)=>
+   recordEvidence(c,m,assetId(req),req.body,h.ifMatch,h.key,id)))
+ })
+ app.post('/v1/assets/:assetId/location-events',async(req,reply)=>{
+  const h=b2Headers(req);return commandResponse(reply,await authorized(req,'write',async(c,m,id)=>
+   recordLocation(c,m,assetId(req),req.body,h.ifMatch,h.key,id)))
+ })
+ app.post('/v1/assets/:assetId/asset-relationships',async(req,reply)=>{
+  const h=b2Headers(req);return commandResponse(reply,await authorized(req,'write',async(c,m,id)=>
+   recordRelation(c,m,assetId(req),req.body,h.ifMatch,h.key,id)))
+ })
+ // Future B5 portfolio execution, insurer/provider connections and
+ // external service dispatch remain explicitly blocked.
 
 
  app.all('/v1/*',async(request,reply)=>
