@@ -24,7 +24,7 @@ const validId=(value:string)=>{if(!Uuid.safeParse(value).success)fail(400,'INVAL
 const today=()=>new Date().toISOString().slice(0,10)
 const parse=<T>(schema:z.ZodType<T>,input:unknown):T=>{
  const result=schema.safeParse(input)
- if(!result.success)fail(400,'INVALID_REQUEST','Request does not match the B4 domain contract.')
+ if(!result.success)throw new ApiFault(400,'INVALID_REQUEST','Request does not match the B4 domain contract.')
  return result.data
 }
 export function assertDay(value:string,{future=false}: {future?:boolean}={}){
@@ -51,7 +51,7 @@ export function advanceDue(date:string,interval:number,unit:'DAYS'|'WEEKS'|'MONT
  return start.toISOString().slice(0,10)
 }
 function versions(match:string|undefined,key:string|undefined){
- if(!match)fail(428,'IF_MATCH_REQUIRED','Provide the current strong asset ETag.')
+ if(!match)throw new ApiFault(428,'IF_MATCH_REQUIRED','Provide the current strong asset ETag.')
  if(!IfMatchVersion.safeParse(match).success)fail(400,'INVALID_IF_MATCH','Expected a strong numeric asset ETag.')
  if(!IdempotencyKey.safeParse(key).success)fail(428,'IDEMPOTENCY_KEY_REQUIRED','Provide a valid Idempotency-Key.')
  return {version:Number(match.slice(1,-1)),key:key as string}
@@ -61,7 +61,7 @@ async function lock(client:TenantSqlClient,tenantId:string,assetId:string,versio
   "SELECT id,tenant_id,currency,lifecycle,record_version,to_char(acquired_on,'YYYY-MM-DD') AS acquired_on,location_label FROM asset_os.assets WHERE tenant_id=$1 AND id=$2 FOR UPDATE",
   [tenantId,assetId])
  const asset=rows.rows[0] as Lock|undefined
- if(!asset)fail(404,'ASSET_NOT_FOUND','Asset not found in this tenant.')
+ if(!asset)throw new ApiFault(404,'ASSET_NOT_FOUND','Asset not found in this tenant.')
  if(asset.record_version!==version)fail(412,'RECORD_VERSION_CONFLICT','Asset changed. Reload the current version.')
  if(!eligible.includes(asset.lifecycle))fail(409,'ASSET_NOT_OPERATIONALLY_ACTIVE','Operational writes require acquired, active or suspended assets.')
  return asset
@@ -82,9 +82,9 @@ async function run(
   const existing=(await client.query(
    'SELECT request_hash,response_code,response_body FROM asset_os.idempotency_keys WHERE tenant_id=$1 AND operation=$2 AND idempotency_key=$3 FOR UPDATE',
    [member.tenantId,name,key])).rows[0] as {request_hash:string;response_code:number|null;response_body:Command['body']|null}|undefined
-  if(!existing)fail(409,'IDEMPOTENCY_UNAVAILABLE','Original write was unavailable.')
+  if(!existing)throw new ApiFault(409,'IDEMPOTENCY_UNAVAILABLE','Original write was unavailable.')
   if(existing.request_hash!==hash)fail(409,'IDEMPOTENCY_KEY_CONFLICT','Key was used with different request data.')
-  if(!existing.response_code||!existing.response_body)fail(409,'IDEMPOTENCY_IN_PROGRESS','Original write was not committed.')
+  if(!existing.response_code||!existing.response_body)throw new ApiFault(409,'IDEMPOTENCY_IN_PROGRESS','Original write was not committed.')
   return {status:existing.response_code,body:existing.response_body,replayed:true}
  }
  const asset=await lock(client,member.tenantId,assetId,version)
@@ -323,11 +323,12 @@ export async function listOperations(client:TenantSqlClient,tenantId:string,asse
  const values:unknown[]=[tenantId,assetId]
  let filter='tenant_id=$1 AND asset_id=$2'
  if(args.cursor){
-  let cursor:{timestamp:string;id:string}
+  let cursor:{timestamp:string;id:string}|null=null
   try{
    cursor=z.object({timestamp:z.iso.datetime({offset:true}),id:Uuid}).strict()
     .parse(JSON.parse(Buffer.from(args.cursor,'base64url').toString('utf8')))
-  }catch{fail(400,'INVALID_CURSOR','Invalid operations pagination cursor.')}
+  }catch{throw new ApiFault(400,'INVALID_CURSOR','Invalid operations pagination cursor.')}
+  if(!cursor)throw new ApiFault(400,'INVALID_CURSOR','Invalid operations pagination cursor.')
   values.push(cursor.timestamp,cursor.id)
   filter+=' AND ('+meta.sort+',id)<($3::timestamptz,$4::uuid)'
  }
