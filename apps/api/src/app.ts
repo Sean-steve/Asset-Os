@@ -63,7 +63,7 @@ export function buildApp(pool:PoolPort,verifier:OidcVerifier|null=null){
   return reply.code(503).send({status:'unready',database:'unavailable'})
  })
  app.get('/v1/meta',async()=>({
-  apiVersion:API_VERSION,contractVersion:CONTRACT_VERSION,phase:'B3',
+  apiVersion:API_VERSION,contractVersion:CONTRACT_VERSION,phase:'B4',
   runtimeDomainAccess:verifier?'OIDC_CONFIGURED_MEMBERSHIP_REQUIRED':'IDENTITY_NOT_CONFIGURED',
   frontendConnection:'NOT_CONNECTED',capabilities:B4_CAPABILITIES
  }))
