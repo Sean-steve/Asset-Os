@@ -1,4 +1,4 @@
-name: Asset OS Backend B3 Certification
+name: Asset OS Backend B4 Certification
 on:
   pull_request:
     branches: [main]
@@ -8,7 +8,7 @@ on:
 permissions:
   contents: read
 jobs:
-  postgres-economics-authority-certification:
+  postgres-operations-authority-certification:
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     services:
@@ -53,9 +53,9 @@ jobs:
           psql -h 127.0.0.1 -p 5435 -U asset_os_owner -d asset_os \
             -v role_password=ci-only-app-password \
             -f infra/scripts/create-runtime-role.sql
-      - name: Apply B3 PostgreSQL schema and verify migration checksum
+      - name: Apply B4 PostgreSQL schema and verify migration checksum
         run: |
           npm --prefix apps/api run migrate
           npm --prefix apps/api run migrate:check
-      - name: Real Postgres OIDC, RLS, registry, lifecycle, valuations, financing and economic observations
+      - name: Real Postgres OIDC, RLS, registry, lifecycle, economics and B4 operations authority
         run: npm --prefix apps/api run test:db
