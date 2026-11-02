@@ -147,7 +147,9 @@ export async function recordJob(client:TenantSqlClient,m:VerifiedMembership,id:s
  assertDay(d.scheduledFor,{future:true})
  return run(client,m,id,'service.schedule',d,match,key,requestId,async asset=>{
   checkDate(d.scheduledFor,asset,true)
-  if(d.planId)await readOne(client,m.tenantId,'maintenance_plans',id,d.planId)
+  if(d.planId){const plan=await readOne(client,m.tenantId,'maintenance_plans',id,d.planId)
+   if(plan.status!=='ACTIVE')fail(409,'PLAN_PAUSED','A linked service job requires an active maintenance plan.')
+  }
   const recordId=uid()
   await client.query(
    'INSERT INTO asset_os.service_jobs(id,tenant_id,asset_id,plan_id,title,scheduled_for,provider_label,notes) VALUES($1,$2,$3,$4,$5,$6,$7,$8)',
@@ -193,9 +195,13 @@ export async function jobAction(client:TenantSqlClient,m:VerifiedMembership,id:s
 export async function recordPolicy(client:TenantSqlClient,m:VerifiedMembership,id:string,input:unknown,match:string|undefined,key:string|undefined,requestId:string){
  const d=parse(PolicyRecord,input)
  assertDay(d.startOn,{future:true});assertDay(d.endOn,{future:true})
- if(d.endOn<d.startOn)fail(422,'INVALID_POLICY_PERIOD','End date cannot precede start date.')
+ if(d.endOn<=d.startOn)fail(422,'INVALID_POLICY_PERIOD','End date cannot precede start date.')
  return run(client,m,id,'insurance.record',d,match,key,requestId,async asset=>{
   checkDate(d.startOn,asset,true)
+  if(d.policyReference){
+   const duplicate=await client.query("SELECT id FROM asset_os.insurance_policies WHERE tenant_id=$1 AND asset_id=$2 AND status='RECORDED' AND lower(trim(policy_reference))=lower(trim($3)) AND id<>COALESCE($4::uuid,'00000000-0000-0000-0000-000000000000')",[m.tenantId,id,d.policyReference,d.replacesId])
+   if(duplicate.rowCount)fail(409,'POLICY_REFERENCE_EXISTS','A recorded current policy already uses that reference.')
+  }
   if(d.replacesId){
    const previous=await readOne(client,m.tenantId,'insurance_policies',id,d.replacesId)
    if(previous.status!=='RECORDED')fail(409,'POLICY_NOT_CURRENT','Only a currently recorded policy can be superseded.')
@@ -243,6 +249,7 @@ export async function recordReading(client:TenantSqlClient,m:VerifiedMembership,
 }
 export async function recordEvidence(client:TenantSqlClient,m:VerifiedMembership,id:string,input:unknown,match:string|undefined,key:string|undefined,requestId:string){
  const d=parse(EvidenceRecord,input)
+ if(/https?:\/\/|data:|base64,|-----BEGIN/i.test(d.reference))fail(422,'UNSAFE_EVIDENCE_REFERENCE','Use an opaque reference label, not a URL, document or encoded secret.')
  if(d.issuedOn)assertDay(d.issuedOn)
  if(d.expiresOn)assertDay(d.expiresOn,{future:true})
  if(d.issuedOn&&d.expiresOn&&d.expiresOn<d.issuedOn)fail(422,'INVALID_EVIDENCE_PERIOD','Expiry cannot precede issue date.')
@@ -269,6 +276,7 @@ export async function recordLocation(client:TenantSqlClient,m:VerifiedMembership
   await client.query(
    'INSERT INTO asset_os.location_events(id,tenant_id,asset_id,from_label,to_label,effective_on,reason) VALUES($1,$2,$3,$4,$5,$6,$7)',
    [recordId,m.tenantId,id,fromLabel,d.toLabel,d.effectiveOn,d.reason])
+  await client.query('UPDATE asset_os.assets SET location_label=$3 WHERE tenant_id=$1 AND id=$2',[m.tenantId,id,d.toLabel])
   return outcome(201,recordId,'location.label.recorded','LOCATION_LABEL_RECORDED','location',
    {id:recordId,assetId:id,fromLabel,...d,liveTracking:false})
  })
@@ -281,6 +289,7 @@ export async function recordRelation(client:TenantSqlClient,m:VerifiedMembership
   await client.query("SELECT pg_advisory_xact_lock(hashtext('asset-os-relations:' || $1))",[m.tenantId])
   const target=await getAsset(client,m.tenantId,d.relatedAssetId)
   if(target.tenantId!==m.tenantId)fail(404,'RELATED_ASSET_NOT_FOUND','Related asset not in tenant.')
+  if(!eligible.includes(target.lifecycle))fail(409,'RELATED_ASSET_INACTIVE','Related asset must be acquired, active or suspended.')
   if(['COMPONENT_OF','DEPENDS_ON'].includes(d.type)){
    const cycle=await client.query(
     'WITH RECURSIVE walk(id) AS (SELECT related_asset_id FROM asset_os.asset_relationships WHERE tenant_id=$1 AND asset_id=$2 AND relation=$3 UNION SELECT a.related_asset_id FROM asset_os.asset_relationships a JOIN walk w ON a.asset_id=w.id WHERE a.tenant_id=$1 AND a.relation=$3) SELECT 1 FROM walk WHERE id=$4 LIMIT 1',
@@ -369,7 +378,7 @@ export async function operationsSummary(client:TenantSqlClient,tenantId:string,a
 export async function operationsCalendar(client:TenantSqlClient,tenantId:string,assetId:string){
  await getAsset(client,tenantId,assetId)
  const rows=await client.query(
-  "SELECT 'MAINTENANCE_DUE' AS kind,id,to_char(next_due,'YYYY-MM-DD') AS \"dueOn\",title AS label FROM asset_os.maintenance_plans WHERE tenant_id=$1 AND asset_id=$2 AND status='ACTIVE' UNION ALL SELECT 'SERVICE_SCHEDULED' AS kind,id,to_char(scheduled_for,'YYYY-MM-DD') AS \"dueOn\",title AS label FROM asset_os.service_jobs WHERE tenant_id=$1 AND asset_id=$2 AND status IN ('SCHEDULED','IN_PROGRESS') UNION ALL SELECT 'POLICY_EXPIRY' AS kind,id,to_char(end_on,'YYYY-MM-DD') AS \"dueOn\",insurer_label AS label FROM asset_os.insurance_policies WHERE tenant_id=$1 AND asset_id=$2 AND status='RECORDED' ORDER BY \"dueOn\" ASC,id ASC LIMIT 100",
+  "SELECT 'MAINTENANCE_DUE' AS kind,id,to_char(next_due,'YYYY-MM-DD') AS \"dueOn\",title AS label FROM asset_os.maintenance_plans WHERE tenant_id=$1 AND asset_id=$2 AND status='ACTIVE' UNION ALL SELECT 'SERVICE_SCHEDULED' AS kind,id,to_char(scheduled_for,'YYYY-MM-DD') AS \"dueOn\",title AS label FROM asset_os.service_jobs WHERE tenant_id=$1 AND asset_id=$2 AND status IN ('SCHEDULED','IN_PROGRESS') UNION ALL SELECT 'POLICY_EXPIRY' AS kind,id,to_char(end_on,'YYYY-MM-DD') AS \"dueOn\",insurer_label AS label FROM asset_os.insurance_policies WHERE tenant_id=$1 AND asset_id=$2 AND status='RECORDED' UNION ALL SELECT 'EVIDENCE_EXPIRY' AS kind,id,to_char(expires_on,'YYYY-MM-DD') AS \"dueOn\",title AS label FROM asset_os.document_references WHERE tenant_id=$1 AND asset_id=$2 AND expires_on IS NOT NULL ORDER BY \"dueOn\" ASC,id ASC LIMIT 100",
   [tenantId,assetId])
  return {assetId,items:rows.rows,limit:100,notificationDelivered:false,calendarSynced:false,
   note:'Local planning projections only. No external calendar, alerts or dispatch.'}
