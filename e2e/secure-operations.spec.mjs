@@ -142,7 +142,7 @@ test('B4.1 OIDC operator views PostgreSQL-only summary, seven tabs and performs 
  const state=await setup(page)
  await authenticate(page)
  await openAsset(page)
- await expect(page.getByText('Coverage unverified', {exact:false}).first()).toBeVisible()
+ await expect(page.getByText(/coverage unverified/i).first()).toBeVisible()
  await expect(page.getByText(/Notifications delivered: No/)).toBeVisible()
  await page.getByRole('tab',{name:'Maintenance'}).click()
  await expect(page.getByRole('heading',{name:'Maintenance plans'})).toBeVisible()
