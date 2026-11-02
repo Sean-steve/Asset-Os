@@ -44,8 +44,8 @@ test('B3 user flow and reference DTOs reject forged authoritative source fields'
 })
 test('B3 versioned OpenAPI advertises only implemented protected commands',()=>{
  const o=JSON.parse(readFileSync(new URL('../openapi/openapi.json',import.meta.url),'utf8'))
- assert.equal(o.info.version,'0.4.0-b3')
- assert.equal(CONTRACT_VERSION,'2026-10-31.b3')
+ assert.equal(o.info.version,'0.5.0-b4')
+ assert.equal(CONTRACT_VERSION,'2026-11-02.b4')
  const endpoints=[
  '/v1/assets/{assetId}/valuations',
  '/v1/assets/{assetId}/valuations/{valuationId}/accept',

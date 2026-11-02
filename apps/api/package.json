@@ -1,6 +1,6 @@
 {
   "name": "@asset-os/api",
-  "version": "0.4.0-b3",
+  "version": "0.5.0-b4",
   "private": true,
   "type": "module",
   "engines": {

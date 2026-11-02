@@ -1,5 +1,5 @@
 {
-  "version": "2026-10-31.b3",
+  "version": "2026-11-02.b4",
   "transport": "NOT_CONFIGURED",
   "owner": "ASSET_OS",
   "allowedEmissions": [
@@ -43,20 +43,6 @@
         "assetId",
         "recordId",
         "recordVersion"
-      ]
-    },
-    {
-      "type": "asset.maintenance.due.v1",
-      "producer": "ASSET_OS",
-      "recipient": [
-        "PERSONAL_KERNEL",
-        "MISSION_OS"
-      ],
-      "authority": "proposed work only, never schedule execution",
-      "payloadFields": [
-        "assetId",
-        "planId",
-        "dueOn"
       ]
     },
     {
@@ -196,6 +182,146 @@
         "recordId",
         "recordVersion"
       ]
+    },
+    {
+      "type": "asset.maintenance.plan.recorded.v1",
+      "producer": "ASSET_OS",
+      "recipient": [
+        "PERSONAL_KERNEL",
+        "WEALTH_OS"
+      ],
+      "authority": "user-recorded maintenance schedule only",
+      "payloadFields": [
+        "assetId",
+        "recordId",
+        "recordVersion"
+      ]
+    },
+    {
+      "type": "asset.maintenance.plan.status.changed.v1",
+      "producer": "ASSET_OS",
+      "recipient": [
+        "PERSONAL_KERNEL",
+        "WEALTH_OS"
+      ],
+      "authority": "user-recorded pause/resume only",
+      "payloadFields": [
+        "assetId",
+        "recordId",
+        "recordVersion"
+      ]
+    },
+    {
+      "type": "asset.service.job.scheduled.v1",
+      "producer": "ASSET_OS",
+      "recipient": [
+        "PERSONAL_KERNEL",
+        "WEALTH_OS"
+      ],
+      "authority": "internal scheduled job, no provider dispatch",
+      "payloadFields": [
+        "assetId",
+        "recordId",
+        "recordVersion"
+      ]
+    },
+    {
+      "type": "asset.service.job.status.changed.v1",
+      "producer": "ASSET_OS",
+      "recipient": [
+        "PERSONAL_KERNEL",
+        "WEALTH_OS"
+      ],
+      "authority": "user-entered service status/completion; no payment",
+      "payloadFields": [
+        "assetId",
+        "recordId",
+        "recordVersion"
+      ]
+    },
+    {
+      "type": "asset.insurance.policy.recorded.v1",
+      "producer": "ASSET_OS",
+      "recipient": [
+        "PERSONAL_KERNEL",
+        "WEALTH_OS"
+      ],
+      "authority": "user-entered insurer policy metadata; no coverage verification",
+      "payloadFields": [
+        "assetId",
+        "recordId",
+        "recordVersion"
+      ]
+    },
+    {
+      "type": "asset.insurance.policy.cancelled.v1",
+      "producer": "ASSET_OS",
+      "recipient": [
+        "PERSONAL_KERNEL",
+        "WEALTH_OS"
+      ],
+      "authority": "internal cancellation label; no external underwriter notification",
+      "payloadFields": [
+        "assetId",
+        "recordId",
+        "recordVersion"
+      ]
+    },
+    {
+      "type": "asset.utilization.reading.recorded.v1",
+      "producer": "ASSET_OS",
+      "recipient": [
+        "PERSONAL_KERNEL",
+        "WEALTH_OS"
+      ],
+      "authority": "user-entered cumulative reading; no telematics",
+      "payloadFields": [
+        "assetId",
+        "recordId",
+        "recordVersion"
+      ]
+    },
+    {
+      "type": "asset.evidence.reference.recorded.v1",
+      "producer": "ASSET_OS",
+      "recipient": [
+        "PERSONAL_KERNEL",
+        "WEALTH_OS"
+      ],
+      "authority": "opaque reference label; no file verification or storage",
+      "payloadFields": [
+        "assetId",
+        "recordId",
+        "recordVersion"
+      ]
+    },
+    {
+      "type": "asset.location.label.recorded.v1",
+      "producer": "ASSET_OS",
+      "recipient": [
+        "PERSONAL_KERNEL",
+        "WEALTH_OS"
+      ],
+      "authority": "operator location label only; not live coordinates",
+      "payloadFields": [
+        "assetId",
+        "recordId",
+        "recordVersion"
+      ]
+    },
+    {
+      "type": "asset.relationship.recorded.v1",
+      "producer": "ASSET_OS",
+      "recipient": [
+        "PERSONAL_KERNEL",
+        "WEALTH_OS"
+      ],
+      "authority": "tenant-local association; not legal proof",
+      "payloadFields": [
+        "assetId",
+        "recordId",
+        "recordVersion"
+      ]
     }
   ],
   "allowedConsumption": [
@@ -226,6 +352,7 @@
     "no background delivery B0",
     "signed OIDC subject-to-member enforcement on source commands",
     "B2 immutable asset histories, state guards, effective-dated ownership and transaction version checks",
-    "B3 asset row locking, accepted-valuation single-active index, exact-cents derived economics, immutable cashflow/financing observations"
+    "B3 asset row locking, accepted-valuation single-active index, exact-cents derived economics, immutable cashflow/financing observations",
+    "B4 tenant-bound operational histories, status-only mutation grants, graph cycle guards, versioned commands and no external delivery"
   ]
 }

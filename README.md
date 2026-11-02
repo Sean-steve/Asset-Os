@@ -1,6 +1,10 @@
 # Asset OS — Personal Kernel Asset Intelligence
 
-**Frontend: Phase 7 certified — 60/60 preview screen experiences, plus B3.1 Secure Economics API-backed screens. Backend: Phase B3 PostgreSQL valuation, financing and economics implemented (live identity and backend deployment still unconfigured).** The hosted Pages frontend remains a browser-local preview outside the separate Secure Registry. Five starter assets are clearly illustrative; user-entered asset, ownership, finance, operation and portfolio changes persist in local browser storage only. Dashboard valuation history and operational alerts now derive only from recorded data, with honest empty states rather than synthetic activity.
+**Frontend: Phase 7 certified — 60/60 preview screen experiences, plus B3.1 Secure Economics API-backed screens. Backend: Phase B4 PostgreSQL maintenance, insurance and operations implemented in addition to B3 economics (live identity and API deployment still unconfigured).** The hosted Pages frontend remains a browser-local preview outside the separate Secure Registry. Five starter assets are clearly illustrative; user-entered asset, ownership, finance, operation and portfolio changes persist in local browser storage only. Dashboard valuation history and operational alerts now derive only from recorded data, with honest empty states rather than synthetic activity.
+
+## Phase B4 — Maintenance, Insurance & Operations Backend
+
+B4 adds authenticated PostgreSQL maintenance plans, service work records, policy metadata, cumulative utilization readings, evidence labels, location history and tenant-scoped relationships. All commands use strong If-Match, idempotency, signed-identity tenant membership, audit/outbox and strict storage guards. **This is a backend phase**: the existing Phase 4 operations interface is still browser-local and no live insurer, service dispatch, financial payments, tracking provider, OIDC issuer or hosted HTTPS API is activated. See [B4 Backend Guide](docs/BACKEND_B4.md). Next: B4.1 protected operations UI and real staging activation.
 
 ## Phase B3.1 — Secure Economics Frontend Integration
 
