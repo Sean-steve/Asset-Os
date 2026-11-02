@@ -29,7 +29,6 @@ const value=(f:FormData,key:string)=>String(f.get(key)||'').trim()
 const emptyToNull=(f:FormData,key:string)=>value(f,key)||null
 const text=(v:unknown,missing='Not recorded')=>v===null||v===undefined||v===''?missing:String(v)
 const display=(v:unknown)=>typeof v==='string'?v.replaceAll('_',' '):text(v)
-const amount=(v:unknown,currency:string)=>v===null||v===undefined?'Unknown':currency+' '+String(v)
 const errorText=(e:unknown)=>e instanceof ServerError?e.code+': '+e.message:e instanceof Error?e.message:'The authenticated server request failed.'
 const Field=({name,label,kind='text',required=false,max=160,defaultValue,min,placeholder}:{
  name:string;label:string;kind?:'text'|'date'|'number'|'textarea'|'money';required?:boolean;max?:number;
