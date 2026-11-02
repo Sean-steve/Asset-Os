@@ -51,6 +51,6 @@ CI runs six checksummed PostgreSQL migrations, strict backend TypeScript and uni
 
 ## Next delivery
 
-B3.1 implements separate Secure Economics screens wired to the B3 API, without importing browser-local sample financial entries. See BACKEND_B3_1.md. A protected HTTPS backend and vetted real Personal Kernel/OIDC issuer must be provisioned before claiming real staging/production activation. B4 will implement server-authoritative operations/maintenance/insurance.
+B3.1 implements separate Secure Economics screens wired to the B3 API, without importing browser-local sample financial entries. See BACKEND_B3_1.md. A protected HTTPS backend and vetted real Personal Kernel/OIDC issuer must be provisioned before claiming real staging/production activation. B4 implements server-authoritative operations/maintenance/insurance; see BACKEND_B4.md. The browser-local Phase 4 screens still require B4.1 integration.
 
 No claims of actual wealth, loan repayment, financial ledger, bank reconciliation, payment, legal-title verification or certified asset appraisal are made in B3.
