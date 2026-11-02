@@ -44,7 +44,7 @@ export const ErrorResponse=z.object({error:z.object({
  code:z.string().min(1),message:z.string().min(1),requestId:z.string().min(1)
 }).strict()}).strict()
 export const API_VERSION='1'
-export const CONTRACT_VERSION='2026-10-31.b3'
+export const CONTRACT_VERSION='2026-11-02.b4'
 export const IDENTITY_NOT_CONFIGURED='IDENTITY_NOT_CONFIGURED'
 export const FOUNDATION_ONLY_CAPABILITIES=[
  'health_liveness','health_readiness','openapi_contract','postgresql_migrations',
@@ -190,4 +190,63 @@ export const B3_CAPABILITIES=[
  'unverified_finance_reference_labels',
  'derived_currency_scoped_asset_economics',
  'append_only_b3_audit_and_pending_outbox'
+] as const
+
+ 
+// B4: typed operational observations. Clients may not assert completion,
+// insurance verification, payment, dispatch, location authority or asset state.
+export const PlanCreate=z.object({
+ title:z.string().trim().min(1).max(160),description:z.string().max(1200).default(''),
+ intervalValue:z.number().int().min(1).max(365),
+ intervalUnit:z.enum(['DAYS','WEEKS','MONTHS']),nextDue:IsoDate
+}).strict()
+export const PlanAction=z.object({action:z.enum(['PAUSE','RESUME'])}).strict()
+export const JobCreate=z.object({
+ title:z.string().trim().min(1).max(160),planId:Uuid.nullable().default(null),
+ scheduledFor:IsoDate,providerLabel:z.string().max(160).default(''),
+ notes:z.string().max(1200).default('')
+}).strict()
+export const JobAction=z.discriminatedUnion('action',[
+ z.object({action:z.literal('START')}).strict(),
+ z.object({action:z.literal('CANCEL')}).strict(),
+ z.object({action:z.literal('COMPLETE'),completedOn:IsoDate,
+  recordedCost:DecimalMoney.nullable().default(null),
+  completionNotes:z.string().max(1200).default('')}).strict()
+])
+export const PolicyRecord=z.object({
+ insurerLabel:z.string().trim().min(1).max(160),policyReference:z.string().max(180).default(''),
+ policyType:z.string().trim().min(1).max(120),
+ startOn:IsoDate,endOn:IsoDate,
+ coverageAmount:DecimalMoney,premiumAmount:DecimalMoney.nullable().default(null),
+ notes:z.string().max(1200).default(''),replacesId:Uuid.nullable().default(null)
+}).strict()
+export const PolicyAction=z.object({action:z.literal('CANCEL')}).strict()
+export const ReadingRecord=z.object({
+ metric:z.enum(['ODOMETER_KM','HOURS_TOTAL','USE_COUNT','OCCUPIED_DAYS']),
+ observedOn:IsoDate,reading:DecimalMoney,
+ sourceLabel:z.string().trim().min(1).max(160),notes:z.string().max(800).default('')
+}).strict().refine(v=>!['USE_COUNT','OCCUPIED_DAYS'].includes(v.metric)||/^(?:0|[1-9]\\d*)$/.test(v.reading),{
+ message:'Count metrics require integer observations.'
+})
+export const EvidenceRecord=z.object({
+ kind:z.enum(['INSURANCE','MAINTENANCE','OWNERSHIP','COMPLIANCE','VALUATION','OTHER']),
+ title:z.string().trim().min(1).max(160),reference:z.string().trim().min(1).max(300),
+ issuedOn:IsoDate.nullable().default(null),expiresOn:IsoDate.nullable().default(null),
+ notes:z.string().max(800).default('')
+}).strict()
+export const LocationRecord=z.object({
+ toLabel:z.string().trim().min(1).max(160),effectiveOn:IsoDate,
+ reason:z.string().max(500).default('')
+}).strict()
+export const RelationRecord=z.object({
+ relatedAssetId:Uuid,
+ type:z.enum(['ASSOCIATED_WITH','COMPONENT_OF','DEPENDS_ON','LOCATED_WITH']),
+ note:z.string().max(500).default('')
+}).strict()
+export const B4_CAPABILITIES=[
+ ...B3_CAPABILITIES,
+ 'maintenance_plans_and_schedule_state','service_jobs_and_completion_observations',
+ 'unverified_insurance_policy_history','nondecreasing_utilization_readings',
+ 'opaque_evidence_references','location_history_labels','tenant_scoped_asset_links',
+ 'derived_operations_calendar_without_delivery'
 ] as const
