@@ -31,6 +31,7 @@ const nav: Array<{name: string; icon: LucideIcon; slug: string; phase: number}> 
   { name:'Secure Registry',icon:LockKeyhole,slug:'server-registry',phase:1 },
   { name:'Secure Lifecycle',icon:ShieldCheck,slug:'server-registry/lifecycle',phase:2 },
   { name:'Secure Economics',icon:Landmark,slug:'server-registry/economics',phase:3 },
+  { name:'Secure Operations',icon:Wrench,slug:'server-registry/operations',phase:4 },
   { name:'My Assets',icon:Layers3,slug:'assets',phase:1 },
   { name:'Classifications',icon:Component,slug:'classifications',phase:1 },
   { name:'Asset tags',icon:BookOpen,slug:'tags',phase:1 },
@@ -98,7 +99,9 @@ const secureNavActive = (slug:string,path:string) =>
       ? path==='server-registry/lifecycle'||/^server-registry\/asset\/[0-9a-f-]{36}\/lifecycle$/i.test(path)
       : slug==='server-registry/economics'
         ? path==='server-registry/economics'||/^server-registry\/asset\/[0-9a-f-]{36}\/economics$/i.test(path)
-        : false
+        : slug==='server-registry/operations'
+          ? path==='server-registry/operations'||/^server-registry\/asset\/[0-9a-f-]{36}\/operations$/i.test(path)
+          : false
 const slug = (value: string) => value.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
 const currency = (amount:number,code:string) => new Intl.NumberFormat('en-KE',{maximumFractionDigits:2}).format(amount)+' '+code
 const viewAsset = (a:AssetRecord):Asset => ({id:a.id,name:a.name,category:a.category,subtype:a.subcategory,value:a.value,equity:a.equity,status:a.lifecycle==='ACTIVE'?'Active':a.lifecycle.split('_').map(s=>s[0]+s.slice(1).toLowerCase()).join(' '),icon:({ 'Real Estate':'building',Vehicles:'car',Investments:'chart',Business:'briefcase','Digital Assets':'server' } as Record<string,string>)[a.category]||'layers',color:({ 'Real Estate':'#478ffa',Vehicles:'#45cba4',Investments:'#f0bf63',Business:'#f58c63','Digital Assets':'#a384f5' } as Record<string,string>)[a.category]||'#95a9c9',currency:a.currency,lifecycle:a.lifecycle})

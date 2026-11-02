@@ -1,10 +1,16 @@
 # Asset OS — Personal Kernel Asset Intelligence
 
-**Frontend: Phase 7 certified — 60/60 preview screen experiences, plus B3.1 Secure Economics API-backed screens. Backend: Phase B4 PostgreSQL maintenance, insurance and operations implemented in addition to B3 economics (live identity and API deployment still unconfigured).** The hosted Pages frontend remains a browser-local preview outside the separate Secure Registry. Five starter assets are clearly illustrative; user-entered asset, ownership, finance, operation and portfolio changes persist in local browser storage only. Dashboard valuation history and operational alerts now derive only from recorded data, with honest empty states rather than synthetic activity.
+**Frontend: Phase 7 certified — 60/60 browser preview experiences, plus B3.1 Secure Economics and B4.1 Secure Operations API-backed screens. Backend: B4 PostgreSQL operational authority in place (live identity, HTTPS API and dedicated staging deployment still unconfigured).** The hosted Pages frontend remains a browser-local preview outside the separate Secure Registry. Five starter assets are clearly illustrative; user-entered asset, ownership, finance, operation and portfolio changes persist in local browser storage only. Dashboard valuation history and operational alerts now derive only from recorded data, with honest empty states rather than synthetic activity.
+
+## Phase B4.1 — Secure Operations Frontend–Backend Integration
+
+Authenticated maintenance, insurance and operations are now available through the separate **Secure Operations** workspace at `#/server-registry/operations` and `#/server-registry/asset/:id/operations`. This area displays server-derived operational summaries/calendars and all seven PostgreSQL history feeds, plus protected commands for plans, services, policies, utilization, evidence, locations and relationships. It reuses the B1.1 PKCE tenant session, B4 versioned/idempotent server writes and read-only roles; browser preview data is never imported.
+
+**Code-level UI and backend CI are certifiable; live staging remains BLOCKED until a real issuer, tenant identities, HTTPS API and PostgreSQL environment are provisioned.** The Phase 4 prototype screens remain intentionally browser-local. See [B4.1 integration and staging gate](docs/BACKEND_B4_1.md).
 
 ## Phase B4 — Maintenance, Insurance & Operations Backend
 
-B4 adds authenticated PostgreSQL maintenance plans, service work records, policy metadata, cumulative utilization readings, evidence labels, location history and tenant-scoped relationships. All commands use strong If-Match, idempotency, signed-identity tenant membership, audit/outbox and strict storage guards. **This is a backend phase**: the existing Phase 4 operations interface is still browser-local and no live insurer, service dispatch, financial payments, tracking provider, OIDC issuer or hosted HTTPS API is activated. See [B4 Backend Guide](docs/BACKEND_B4.md). Next: B4.1 protected operations UI and real staging activation.
+B4 adds authenticated PostgreSQL maintenance plans, service work records, policy metadata, cumulative utilization readings, evidence labels, location history and tenant-scoped relationships. All commands use strong If-Match, idempotency, signed-identity tenant membership, audit/outbox and strict storage guards. **This is a backend phase**: the existing Phase 4 operations interface is still browser-local and no live insurer, service dispatch, financial payments, tracking provider, OIDC issuer or hosted HTTPS API is activated. See [B4 Backend Guide](docs/BACKEND_B4.md). Next: B4.2 live staging activation and evidence closure.
 
 ## Phase B3.1 — Secure Economics Frontend Integration
 
