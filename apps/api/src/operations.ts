@@ -18,6 +18,7 @@ type Result={status:number;recordId:string;event:string;audit:string;field:strin
 type Command={status:number;body:{asset:Awaited<ReturnType<typeof getAsset>>;[key:string]:unknown};replayed:boolean}
 const eligible=['ACQUIRED','ACTIVE','SUSPENDED']
 const uid=()=>randomUUID()
+const dateValue=(value:unknown)=>value instanceof Date?value.toISOString().slice(0,10):String(value).slice(0,10)
 const fail=(status:number,code:string,message:string):never=>{throw new ApiFault(status,code,message)}
 const validId=(value:string)=>{if(!Uuid.safeParse(value).success)fail(400,'INVALID_ID','Expected a UUID.');return value}
 const today=()=>new Date().toISOString().slice(0,10)
@@ -167,7 +168,7 @@ export async function jobAction(client:TenantSqlClient,m:VerifiedMembership,id:s
   else if(d.action==='CANCEL')next='CANCELLED'
   else {
    checkDate(d.completedOn,asset)
-   if(d.completedOn<String(job.scheduled_for).slice(0,10))fail(422,'COMPLETION_BEFORE_SCHEDULE','Completion cannot precede scheduled date.')
+   if(d.completedOn<dateValue(job.scheduled_for))fail(422,'COMPLETION_BEFORE_SCHEDULE','Completion cannot precede scheduled date.')
    next='COMPLETED'
   }
   const completedOn=d.action==='COMPLETE'?d.completedOn:null
@@ -198,7 +199,7 @@ export async function recordPolicy(client:TenantSqlClient,m:VerifiedMembership,i
   if(d.replacesId){
    const previous=await readOne(client,m.tenantId,'insurance_policies',id,d.replacesId)
    if(previous.status!=='RECORDED')fail(409,'POLICY_NOT_CURRENT','Only a currently recorded policy can be superseded.')
-   if(d.startOn<String(previous.start_on).slice(0,10))fail(422,'POLICY_DATE_REGRESSION','Replacement cannot predate original policy start.')
+   if(d.startOn<dateValue(previous.start_on))fail(422,'POLICY_DATE_REGRESSION','Replacement cannot predate original policy start.')
    await client.query(
     "UPDATE asset_os.insurance_policies SET status='SUPERSEDED' WHERE tenant_id=$1 AND asset_id=$2 AND id=$3",
     [m.tenantId,id,d.replacesId])
