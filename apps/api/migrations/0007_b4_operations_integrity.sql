@@ -29,6 +29,7 @@ CREATE INDEX idx_b4_policies_by_asset ON asset_os.insurance_policies(tenant_id,a
 CREATE INDEX idx_b4_readings_by_asset ON asset_os.utilization_readings(tenant_id,asset_id,metric,observed_on DESC,id DESC);
 CREATE INDEX idx_b4_docs_by_asset ON asset_os.document_references(tenant_id,asset_id,recorded_at DESC,id DESC);
 CREATE INDEX idx_b4_locations_by_asset ON asset_os.location_events(tenant_id,asset_id,effective_on DESC,id DESC);
+CREATE UNIQUE INDEX uq_b4_asset_relation ON asset_os.asset_relationships(tenant_id,asset_id,related_asset_id,relation);
 CREATE INDEX idx_b4_relations_by_asset ON asset_os.asset_relationships(tenant_id,asset_id,recorded_at DESC,id DESC);
 ALTER TABLE asset_os.utilization_readings ADD CONSTRAINT b4_utilization_source_length
  CHECK(length(trim(source_label)) BETWEEN 1 AND 160);
