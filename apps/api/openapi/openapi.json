@@ -2,9 +2,9 @@
   "openapi": "3.1.0",
   "info": {
     "title": "Asset OS — Backend API Contracts",
-    "version": "0.4.0-b3",
-    "summary": "B3 protected PostgreSQL asset valuations, financing snapshots and user-recorded economics",
-    "description": "Trusted OIDC, tenant membership and FORCE RLS underlie asset registry, lifecycle and economics. B3 valuation acceptance is internal review only, balances are user-recorded, finance references are not reconciled, and no Finance OS posting, actual payment or loan servicing is performed. Live issuer/API deployment is pending."
+    "version": "0.5.0-b4",
+    "summary": "B4 tenant-protected PostgreSQL maintenance, insurance and operational evidence",
+    "description": "Verified OIDC, FORCE RLS, versioned idempotent maintenance/insurance/operations writes. All policies, service records, location labels and readings are user-entered; no dispatch, insurer verification, GPS, Finance OS posting or live issuer/API staging is activated."
   },
   "servers": [
     {
@@ -1780,11 +1780,11 @@
         "tags": [
           "Operations"
         ],
-        "summary": "Create recurring maintenance plan",
-        "operationId": "POST_operations_create_recurring_maintenance_plan",
+        "operationId": "post__v1_assets_assetId_maintenance_plans",
+        "summary": "Record recurring maintenance plan and next-due date",
         "x-implementation-phase": "B4",
-        "x-runtime-status": "NOT_IMPLEMENTED_IN_B0",
-        "x-domain-authority": "ASSET_OS",
+        "x-runtime-status": "IMPLEMENTED_B4",
+        "x-domain-authority": "ASSET_OS_USER_EVIDENCE_NOT_EXTERNAL_VERIFICATION",
         "security": [
           {
             "KernelBearer": []
@@ -1801,6 +1801,25 @@
             }
           },
           {
+            "name": "X-Tenant-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Verified against active OIDC principal membership; never authority by itself."
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^\\\"[1-9][0-9]{0,8}\\\"$"
+            }
+          },
+          {
             "name": "Idempotency-Key",
             "in": "header",
             "required": true,
@@ -1808,33 +1827,282 @@
               "type": "string",
               "minLength": 8,
               "maxLength": 128
-            },
-            "description": "Stable per-tenant key; server enforces request hash and exactly-once command semantics when implemented."
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/MaintenanceRequest"
-              }
             }
           }
-        },
+        ],
         "responses": {
           "201": {
-            "description": "Accepted contract response",
+            "description": "Committed tenant-scoped command with updated asset ETag",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Asset"
+                  "$ref": "#/components/schemas/B4CommandReceipt"
+                }
+              }
+            },
+            "headers": {
+              "ETag": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Idempotent-Replayed": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Tenant-safe domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Tenant-safe domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Tenant-safe domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Tenant-safe domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Tenant-safe domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "412": {
+            "description": "Tenant-safe domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Tenant-safe domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "428": {
+            "description": "Tenant-safe domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
                 }
               }
             }
           },
           "503": {
-            "description": "Domain access intentionally blocked in B0 until verified Kernel identity",
+            "description": "Tenant-safe domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/B4PlanCreate"
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "Operations"
+        ],
+        "operationId": "get__v1_assets_assetId_maintenance_plans",
+        "summary": "Paginated recurring maintenance plan and next-due date history",
+        "x-implementation-phase": "B4",
+        "x-runtime-status": "IMPLEMENTED_B4",
+        "x-domain-authority": "ASSET_OS_USER_EVIDENCE_NOT_EXTERNAL_VERIFICATION",
+        "security": [
+          {
+            "KernelBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "assetId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "X-Tenant-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Verified against active OIDC principal membership; never authority by itself."
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 30
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 512
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Tenant-scoped PostgreSQL data",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/B4ListPage"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Tenant-safe domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Tenant-safe domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Tenant-safe domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Tenant-safe domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Tenant-safe domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "412": {
+            "description": "Tenant-safe domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Tenant-safe domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "428": {
+            "description": "Tenant-safe domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Tenant-safe domain error",
             "content": {
               "application/json": {
                 "schema": {
@@ -1851,11 +2119,11 @@
         "tags": [
           "Operations"
         ],
-        "summary": "Record insurance metadata, not proof of coverage",
-        "operationId": "POST_operations_record_insurance_metadata_not_proof_of_c",
+        "operationId": "post__v1_assets_assetId_insurance_policies",
+        "summary": "Record unverified insurance metadata, optional supersession",
         "x-implementation-phase": "B4",
-        "x-runtime-status": "NOT_IMPLEMENTED_IN_B0",
-        "x-domain-authority": "ASSET_OS",
+        "x-runtime-status": "IMPLEMENTED_B4",
+        "x-domain-authority": "ASSET_OS_USER_EVIDENCE_NOT_EXTERNAL_VERIFICATION",
         "security": [
           {
             "KernelBearer": []
@@ -1872,6 +2140,25 @@
             }
           },
           {
+            "name": "X-Tenant-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Verified against active OIDC principal membership; never authority by itself."
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^\\\"[1-9][0-9]{0,8}\\\"$"
+            }
+          },
+          {
             "name": "Idempotency-Key",
             "in": "header",
             "required": true,
@@ -1879,33 +2166,282 @@
               "type": "string",
               "minLength": 8,
               "maxLength": 128
-            },
-            "description": "Stable per-tenant key; server enforces request hash and exactly-once command semantics when implemented."
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/InsuranceRequest"
-              }
             }
           }
-        },
+        ],
         "responses": {
           "201": {
-            "description": "Accepted contract response",
+            "description": "Committed tenant-scoped command with updated asset ETag",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Asset"
+                  "$ref": "#/components/schemas/B4CommandReceipt"
+                }
+              }
+            },
+            "headers": {
+              "ETag": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Idempotent-Replayed": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Tenant-safe domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Tenant-safe domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Tenant-safe domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Tenant-safe domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Tenant-safe domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "412": {
+            "description": "Tenant-safe domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Tenant-safe domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "428": {
+            "description": "Tenant-safe domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
                 }
               }
             }
           },
           "503": {
-            "description": "Domain access intentionally blocked in B0 until verified Kernel identity",
+            "description": "Tenant-safe domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/B4PolicyRecord"
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "Operations"
+        ],
+        "operationId": "get__v1_assets_assetId_insurance_policies",
+        "summary": "Paginated unverified insurance metadata, optional supersession history",
+        "x-implementation-phase": "B4",
+        "x-runtime-status": "IMPLEMENTED_B4",
+        "x-domain-authority": "ASSET_OS_USER_EVIDENCE_NOT_EXTERNAL_VERIFICATION",
+        "security": [
+          {
+            "KernelBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "assetId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "X-Tenant-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Verified against active OIDC principal membership; never authority by itself."
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 30
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 512
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Tenant-scoped PostgreSQL data",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/B4ListPage"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Tenant-safe domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Tenant-safe domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Tenant-safe domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Tenant-safe domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Tenant-safe domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "412": {
+            "description": "Tenant-safe domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Tenant-safe domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "428": {
+            "description": "Tenant-safe domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Tenant-safe domain error",
             "content": {
               "application/json": {
                 "schema": {
@@ -5018,6 +5554,2563 @@
           }
         }
       }
+    },
+    "/v1/assets/{assetId}/operations": {
+      "get": {
+        "tags": [
+          "Operations"
+        ],
+        "operationId": "get__v1_assets_assetId_operations",
+        "summary": "Tenant-specific operational counts and latest source-labelled observations",
+        "x-implementation-phase": "B4",
+        "x-runtime-status": "IMPLEMENTED_B4",
+        "x-domain-authority": "ASSET_OS_USER_EVIDENCE_NOT_EXTERNAL_VERIFICATION",
+        "security": [
+          {
+            "KernelBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "assetId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "X-Tenant-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Verified against active OIDC principal membership; never authority by itself."
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Tenant-scoped PostgreSQL data",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Tenant-safe domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Tenant-safe domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Tenant-safe domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Tenant-safe domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Tenant-safe domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "412": {
+            "description": "Tenant-safe domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Tenant-safe domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "428": {
+            "description": "Tenant-safe domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Tenant-safe domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/B4[object Object]"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/assets/{assetId}/operations-calendar": {
+      "get": {
+        "tags": [
+          "Operations"
+        ],
+        "operationId": "get__v1_assets_assetId_operations_calendar",
+        "summary": "Upcoming recorded maintenance, services and insurance expiries; no calendar delivery",
+        "x-implementation-phase": "B4",
+        "x-runtime-status": "IMPLEMENTED_B4",
+        "x-domain-authority": "ASSET_OS_USER_EVIDENCE_NOT_EXTERNAL_VERIFICATION",
+        "security": [
+          {
+            "KernelBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "assetId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "X-Tenant-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Verified against active OIDC principal membership; never authority by itself."
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Tenant-scoped PostgreSQL data",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Tenant-safe domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Tenant-safe domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Tenant-safe domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Tenant-safe domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Tenant-safe domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "412": {
+            "description": "Tenant-safe domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Tenant-safe domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "428": {
+            "description": "Tenant-safe domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Tenant-safe domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/assets/{assetId}/service-jobs": {
+      "get": {
+        "tags": [
+          "Operations"
+        ],
+        "operationId": "get__v1_assets_assetId_service_jobs",
+        "summary": "Paginated scheduled or completed service observation history",
+        "x-implementation-phase": "B4",
+        "x-runtime-status": "IMPLEMENTED_B4",
+        "x-domain-authority": "ASSET_OS_USER_EVIDENCE_NOT_EXTERNAL_VERIFICATION",
+        "security": [
+          {
+            "KernelBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "assetId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "X-Tenant-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Verified against active OIDC principal membership; never authority by itself."
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 30
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 512
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Tenant-scoped PostgreSQL data",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/B4ListPage"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Tenant-safe domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Tenant-safe domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Tenant-safe domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Tenant-safe domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Tenant-safe domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "412": {
+            "description": "Tenant-safe domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Tenant-safe domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "428": {
+            "description": "Tenant-safe domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Tenant-safe domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Operations"
+        ],
+        "operationId": "post__v1_assets_assetId_service_jobs",
+        "summary": "Record scheduled or completed service observation",
+        "x-implementation-phase": "B4",
+        "x-runtime-status": "IMPLEMENTED_B4",
+        "x-domain-authority": "ASSET_OS_USER_EVIDENCE_NOT_EXTERNAL_VERIFICATION",
+        "security": [
+          {
+            "KernelBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "assetId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "X-Tenant-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Verified against active OIDC principal membership; never authority by itself."
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^\\\"[1-9][0-9]{0,8}\\\"$"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 8,
+              "maxLength": 128
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Committed tenant-scoped command with updated asset ETag",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/B4CommandReceipt"
+                }
+              }
+            },
+            "headers": {
+              "ETag": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Idempotent-Replayed": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Tenant-safe domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Tenant-safe domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Tenant-safe domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Tenant-safe domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Tenant-safe domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "412": {
+            "description": "Tenant-safe domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Tenant-safe domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "428": {
+            "description": "Tenant-safe domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Tenant-safe domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/B4JobCreate"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/assets/{assetId}/utilization-readings": {
+      "get": {
+        "tags": [
+          "Operations"
+        ],
+        "operationId": "get__v1_assets_assetId_utilization_readings",
+        "summary": "Paginated cumulative user-entered utilization observation history",
+        "x-implementation-phase": "B4",
+        "x-runtime-status": "IMPLEMENTED_B4",
+        "x-domain-authority": "ASSET_OS_USER_EVIDENCE_NOT_EXTERNAL_VERIFICATION",
+        "security": [
+          {
+            "KernelBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "assetId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "X-Tenant-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Verified against active OIDC principal membership; never authority by itself."
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 30
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 512
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Tenant-scoped PostgreSQL data",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/B4ListPage"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Tenant-safe domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Tenant-safe domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Tenant-safe domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Tenant-safe domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Tenant-safe domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "412": {
+            "description": "Tenant-safe domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Tenant-safe domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "428": {
+            "description": "Tenant-safe domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Tenant-safe domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Operations"
+        ],
+        "operationId": "post__v1_assets_assetId_utilization_readings",
+        "summary": "Record cumulative user-entered utilization observation",
+        "x-implementation-phase": "B4",
+        "x-runtime-status": "IMPLEMENTED_B4",
+        "x-domain-authority": "ASSET_OS_USER_EVIDENCE_NOT_EXTERNAL_VERIFICATION",
+        "security": [
+          {
+            "KernelBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "assetId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "X-Tenant-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Verified against active OIDC principal membership; never authority by itself."
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^\\\"[1-9][0-9]{0,8}\\\"$"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 8,
+              "maxLength": 128
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Committed tenant-scoped command with updated asset ETag",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/B4CommandReceipt"
+                }
+              }
+            },
+            "headers": {
+              "ETag": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Idempotent-Replayed": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Tenant-safe domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Tenant-safe domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Tenant-safe domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Tenant-safe domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Tenant-safe domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "412": {
+            "description": "Tenant-safe domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Tenant-safe domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "428": {
+            "description": "Tenant-safe domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Tenant-safe domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/B4ReadingRecord"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/assets/{assetId}/evidence-references": {
+      "get": {
+        "tags": [
+          "Operations"
+        ],
+        "operationId": "get__v1_assets_assetId_evidence_references",
+        "summary": "Paginated opaque user-entered document reference, not an uploaded file history",
+        "x-implementation-phase": "B4",
+        "x-runtime-status": "IMPLEMENTED_B4",
+        "x-domain-authority": "ASSET_OS_USER_EVIDENCE_NOT_EXTERNAL_VERIFICATION",
+        "security": [
+          {
+            "KernelBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "assetId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "X-Tenant-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Verified against active OIDC principal membership; never authority by itself."
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 30
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 512
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Tenant-scoped PostgreSQL data",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/B4ListPage"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Tenant-safe domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Tenant-safe domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Tenant-safe domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Tenant-safe domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Tenant-safe domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "412": {
+            "description": "Tenant-safe domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Tenant-safe domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "428": {
+            "description": "Tenant-safe domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Tenant-safe domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Operations"
+        ],
+        "operationId": "post__v1_assets_assetId_evidence_references",
+        "summary": "Record opaque user-entered document reference, not an uploaded file",
+        "x-implementation-phase": "B4",
+        "x-runtime-status": "IMPLEMENTED_B4",
+        "x-domain-authority": "ASSET_OS_USER_EVIDENCE_NOT_EXTERNAL_VERIFICATION",
+        "security": [
+          {
+            "KernelBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "assetId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "X-Tenant-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Verified against active OIDC principal membership; never authority by itself."
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^\\\"[1-9][0-9]{0,8}\\\"$"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 8,
+              "maxLength": 128
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Committed tenant-scoped command with updated asset ETag",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/B4CommandReceipt"
+                }
+              }
+            },
+            "headers": {
+              "ETag": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Idempotent-Replayed": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Tenant-safe domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Tenant-safe domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Tenant-safe domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Tenant-safe domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Tenant-safe domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "412": {
+            "description": "Tenant-safe domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Tenant-safe domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "428": {
+            "description": "Tenant-safe domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Tenant-safe domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/B4EvidenceRecord"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/assets/{assetId}/location-events": {
+      "get": {
+        "tags": [
+          "Operations"
+        ],
+        "operationId": "get__v1_assets_assetId_location_events",
+        "summary": "Paginated chronological coarse location label history",
+        "x-implementation-phase": "B4",
+        "x-runtime-status": "IMPLEMENTED_B4",
+        "x-domain-authority": "ASSET_OS_USER_EVIDENCE_NOT_EXTERNAL_VERIFICATION",
+        "security": [
+          {
+            "KernelBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "assetId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "X-Tenant-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Verified against active OIDC principal membership; never authority by itself."
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 30
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 512
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Tenant-scoped PostgreSQL data",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/B4ListPage"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Tenant-safe domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Tenant-safe domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Tenant-safe domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Tenant-safe domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Tenant-safe domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "412": {
+            "description": "Tenant-safe domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Tenant-safe domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "428": {
+            "description": "Tenant-safe domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Tenant-safe domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Operations"
+        ],
+        "operationId": "post__v1_assets_assetId_location_events",
+        "summary": "Record chronological coarse location label",
+        "x-implementation-phase": "B4",
+        "x-runtime-status": "IMPLEMENTED_B4",
+        "x-domain-authority": "ASSET_OS_USER_EVIDENCE_NOT_EXTERNAL_VERIFICATION",
+        "security": [
+          {
+            "KernelBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "assetId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "X-Tenant-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Verified against active OIDC principal membership; never authority by itself."
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^\\\"[1-9][0-9]{0,8}\\\"$"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 8,
+              "maxLength": 128
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Committed tenant-scoped command with updated asset ETag",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/B4CommandReceipt"
+                }
+              }
+            },
+            "headers": {
+              "ETag": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Idempotent-Replayed": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Tenant-safe domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Tenant-safe domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Tenant-safe domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Tenant-safe domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Tenant-safe domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "412": {
+            "description": "Tenant-safe domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Tenant-safe domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "428": {
+            "description": "Tenant-safe domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Tenant-safe domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/B4LocationRecord"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/assets/{assetId}/asset-relationships": {
+      "get": {
+        "tags": [
+          "Operations"
+        ],
+        "operationId": "get__v1_assets_assetId_asset_relationships",
+        "summary": "Paginated tenant-bound directed asset relationship history",
+        "x-implementation-phase": "B4",
+        "x-runtime-status": "IMPLEMENTED_B4",
+        "x-domain-authority": "ASSET_OS_USER_EVIDENCE_NOT_EXTERNAL_VERIFICATION",
+        "security": [
+          {
+            "KernelBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "assetId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "X-Tenant-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Verified against active OIDC principal membership; never authority by itself."
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 30
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 512
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Tenant-scoped PostgreSQL data",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/B4ListPage"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Tenant-safe domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Tenant-safe domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Tenant-safe domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Tenant-safe domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Tenant-safe domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "412": {
+            "description": "Tenant-safe domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Tenant-safe domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "428": {
+            "description": "Tenant-safe domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Tenant-safe domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Operations"
+        ],
+        "operationId": "post__v1_assets_assetId_asset_relationships",
+        "summary": "Record tenant-bound directed asset relationship",
+        "x-implementation-phase": "B4",
+        "x-runtime-status": "IMPLEMENTED_B4",
+        "x-domain-authority": "ASSET_OS_USER_EVIDENCE_NOT_EXTERNAL_VERIFICATION",
+        "security": [
+          {
+            "KernelBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "assetId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "X-Tenant-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Verified against active OIDC principal membership; never authority by itself."
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^\\\"[1-9][0-9]{0,8}\\\"$"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 8,
+              "maxLength": 128
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Committed tenant-scoped command with updated asset ETag",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/B4CommandReceipt"
+                }
+              }
+            },
+            "headers": {
+              "ETag": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Idempotent-Replayed": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Tenant-safe domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Tenant-safe domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Tenant-safe domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Tenant-safe domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Tenant-safe domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "412": {
+            "description": "Tenant-safe domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Tenant-safe domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "428": {
+            "description": "Tenant-safe domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Tenant-safe domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/B4RelationRecord"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/assets/{assetId}/maintenance-plans/{planId}/actions": {
+      "post": {
+        "tags": [
+          "Operations"
+        ],
+        "operationId": "post__v1_assets_assetId_maintenance_plans_planId_actions",
+        "summary": "Pause or resume a plan",
+        "x-implementation-phase": "B4",
+        "x-runtime-status": "IMPLEMENTED_B4",
+        "x-domain-authority": "ASSET_OS_USER_EVIDENCE_NOT_EXTERNAL_VERIFICATION",
+        "security": [
+          {
+            "KernelBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "assetId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "X-Tenant-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Verified against active OIDC principal membership; never authority by itself."
+          },
+          {
+            "name": "planId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^\\\"[1-9][0-9]{0,8}\\\"$"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 8,
+              "maxLength": 128
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Committed tenant-scoped command with updated asset ETag",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/B4CommandReceipt"
+                }
+              }
+            },
+            "headers": {
+              "ETag": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Idempotent-Replayed": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Tenant-safe domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Tenant-safe domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Tenant-safe domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Tenant-safe domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Tenant-safe domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "412": {
+            "description": "Tenant-safe domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Tenant-safe domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "428": {
+            "description": "Tenant-safe domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Tenant-safe domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/B4PlanAction"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/assets/{assetId}/service-jobs/{jobId}/actions": {
+      "post": {
+        "tags": [
+          "Operations"
+        ],
+        "operationId": "post__v1_assets_assetId_service_jobs_jobId_actions",
+        "summary": "Start, cancel or complete a scheduled job",
+        "x-implementation-phase": "B4",
+        "x-runtime-status": "IMPLEMENTED_B4",
+        "x-domain-authority": "ASSET_OS_USER_EVIDENCE_NOT_EXTERNAL_VERIFICATION",
+        "security": [
+          {
+            "KernelBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "assetId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "X-Tenant-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Verified against active OIDC principal membership; never authority by itself."
+          },
+          {
+            "name": "jobId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^\\\"[1-9][0-9]{0,8}\\\"$"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 8,
+              "maxLength": 128
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Committed tenant-scoped command with updated asset ETag",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/B4CommandReceipt"
+                }
+              }
+            },
+            "headers": {
+              "ETag": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Idempotent-Replayed": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Tenant-safe domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Tenant-safe domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Tenant-safe domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Tenant-safe domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Tenant-safe domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "412": {
+            "description": "Tenant-safe domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Tenant-safe domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "428": {
+            "description": "Tenant-safe domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Tenant-safe domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/B4JobAction"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/assets/{assetId}/insurance-policies/{policyId}/actions": {
+      "post": {
+        "tags": [
+          "Operations"
+        ],
+        "operationId": "post__v1_assets_assetId_insurance_policies_policyId_actions",
+        "summary": "Cancel internally recorded insurance policy",
+        "x-implementation-phase": "B4",
+        "x-runtime-status": "IMPLEMENTED_B4",
+        "x-domain-authority": "ASSET_OS_USER_EVIDENCE_NOT_EXTERNAL_VERIFICATION",
+        "security": [
+          {
+            "KernelBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "assetId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "X-Tenant-Id",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "Verified against active OIDC principal membership; never authority by itself."
+          },
+          {
+            "name": "policyId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^\\\"[1-9][0-9]{0,8}\\\"$"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 8,
+              "maxLength": 128
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Committed tenant-scoped command with updated asset ETag",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/B4CommandReceipt"
+                }
+              }
+            },
+            "headers": {
+              "ETag": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Idempotent-Replayed": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Tenant-safe domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Tenant-safe domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Tenant-safe domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Tenant-safe domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Tenant-safe domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "412": {
+            "description": "Tenant-safe domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Tenant-safe domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "428": {
+            "description": "Tenant-safe domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Tenant-safe domain error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/B4PolicyAction"
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -6675,6 +9768,464 @@
         "required": [
           "asset"
         ]
+      },
+      "B4PlanCreate": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "title",
+          "intervalValue",
+          "intervalUnit",
+          "nextDue"
+        ],
+        "properties": {
+          "title": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 1200,
+            "default": ""
+          },
+          "intervalValue": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 365
+          },
+          "intervalUnit": {
+            "type": "string",
+            "enum": [
+              "DAYS",
+              "WEEKS",
+              "MONTHS"
+            ]
+          },
+          "nextDue": {
+            "type": "string",
+            "format": "date"
+          }
+        }
+      },
+      "B4PlanAction": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "action"
+        ],
+        "properties": {
+          "action": {
+            "type": "string",
+            "enum": [
+              "PAUSE",
+              "RESUME"
+            ]
+          }
+        }
+      },
+      "B4JobCreate": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "title",
+          "scheduledFor"
+        ],
+        "properties": {
+          "title": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160
+          },
+          "planId": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "scheduledFor": {
+            "type": "string",
+            "format": "date"
+          },
+          "providerLabel": {
+            "type": "string",
+            "maxLength": 160,
+            "default": ""
+          },
+          "notes": {
+            "type": "string",
+            "maxLength": 1200,
+            "default": ""
+          }
+        }
+      },
+      "B4JobAction": {
+        "oneOf": [
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "action"
+            ],
+            "properties": {
+              "action": {
+                "const": "START"
+              }
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "action"
+            ],
+            "properties": {
+              "action": {
+                "const": "CANCEL"
+              }
+            }
+          },
+          {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "action",
+              "completedOn"
+            ],
+            "properties": {
+              "action": {
+                "const": "COMPLETE"
+              },
+              "completedOn": {
+                "type": "string",
+                "format": "date"
+              },
+              "recordedCost": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "pattern": "^(?:0|[1-9][0-9]{0,17})(?:\\.[0-9]{1,2})?$"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null
+              },
+              "completionNotes": {
+                "type": "string",
+                "maxLength": 1200,
+                "default": ""
+              }
+            }
+          }
+        ]
+      },
+      "B4PolicyRecord": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "insurerLabel",
+          "policyType",
+          "startOn",
+          "endOn",
+          "coverageAmount"
+        ],
+        "properties": {
+          "insurerLabel": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160
+          },
+          "policyReference": {
+            "type": "string",
+            "maxLength": 180,
+            "default": ""
+          },
+          "policyType": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 120
+          },
+          "startOn": {
+            "type": "string",
+            "format": "date"
+          },
+          "endOn": {
+            "type": "string",
+            "format": "date"
+          },
+          "coverageAmount": {
+            "type": "string",
+            "pattern": "^(?:0|[1-9][0-9]{0,17})(?:\\.[0-9]{1,2})?$"
+          },
+          "premiumAmount": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^(?:0|[1-9][0-9]{0,17})(?:\\.[0-9]{1,2})?$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "notes": {
+            "type": "string",
+            "maxLength": 1200,
+            "default": ""
+          },
+          "replacesId": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          }
+        }
+      },
+      "B4PolicyAction": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "action"
+        ],
+        "properties": {
+          "action": {
+            "const": "CANCEL"
+          }
+        }
+      },
+      "B4ReadingRecord": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "metric",
+          "observedOn",
+          "reading",
+          "sourceLabel"
+        ],
+        "properties": {
+          "metric": {
+            "type": "string",
+            "enum": [
+              "ODOMETER_KM",
+              "HOURS_TOTAL",
+              "USE_COUNT",
+              "OCCUPIED_DAYS"
+            ]
+          },
+          "observedOn": {
+            "type": "string",
+            "format": "date"
+          },
+          "reading": {
+            "type": "string",
+            "pattern": "^(?:0|[1-9][0-9]{0,17})(?:\\.[0-9]{1,2})?$"
+          },
+          "sourceLabel": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160
+          },
+          "notes": {
+            "type": "string",
+            "maxLength": 800,
+            "default": ""
+          }
+        }
+      },
+      "B4EvidenceRecord": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "kind",
+          "title",
+          "reference"
+        ],
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "INSURANCE",
+              "MAINTENANCE",
+              "OWNERSHIP",
+              "COMPLIANCE",
+              "VALUATION",
+              "OTHER"
+            ]
+          },
+          "title": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160
+          },
+          "reference": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 300
+          },
+          "issuedOn": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "expiresOn": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "notes": {
+            "type": "string",
+            "maxLength": 800,
+            "default": ""
+          }
+        }
+      },
+      "B4LocationRecord": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "toLabel",
+          "effectiveOn"
+        ],
+        "properties": {
+          "toLabel": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160
+          },
+          "effectiveOn": {
+            "type": "string",
+            "format": "date"
+          },
+          "reason": {
+            "type": "string",
+            "maxLength": 500,
+            "default": ""
+          }
+        }
+      },
+      "B4RelationRecord": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "relatedAssetId",
+          "type"
+        ],
+        "properties": {
+          "relatedAssetId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "ASSOCIATED_WITH",
+              "COMPONENT_OF",
+              "DEPENDS_ON",
+              "LOCATED_WITH"
+            ]
+          },
+          "note": {
+            "type": "string",
+            "maxLength": 500,
+            "default": ""
+          }
+        }
+      },
+      "B4CommandReceipt": {
+        "type": "object",
+        "required": [
+          "asset"
+        ],
+        "properties": {
+          "asset": {
+            "$ref": "#/components/schemas/Asset"
+          },
+          "plan": {
+            "type": "object"
+          },
+          "job": {
+            "type": "object"
+          },
+          "policy": {
+            "type": "object"
+          },
+          "reading": {
+            "type": "object"
+          },
+          "evidence": {
+            "type": "object"
+          },
+          "location": {
+            "type": "object"
+          },
+          "relation": {
+            "type": "object"
+          }
+        },
+        "additionalProperties": true
+      },
+      "B4ListPage": {
+        "type": "object",
+        "required": [
+          "items",
+          "nextCursor",
+          "limit",
+          "sourceAuthority"
+        ],
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": true
+            }
+          },
+          "nextCursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "limit": {
+            "type": "integer"
+          },
+          "sourceAuthority": {
+            "const": "USER_ENTERED_UNVERIFIED"
+          }
+        }
       }
     }
   }
