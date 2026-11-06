@@ -9,7 +9,10 @@
     "test": "node --experimental-strip-types --test tests/*.test.mjs",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "local:setup": "bash scripts/local-postgres.sh",
+    "local:dev": "node scripts/local-dev.mjs",
+    "local:check": "npm run typecheck && npm --prefix apps/api run typecheck && npm --prefix apps/api run test"
   },
   "dependencies": {
     "lucide-react": "0.468.0",
