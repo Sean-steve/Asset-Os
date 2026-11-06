@@ -5,6 +5,7 @@ import './server-registry.css'
 import {ServerLifecycleExperience} from './ServerLifecycleExperience'
 import {ServerEconomicsExperience} from './ServerEconomicsExperience'
 import {ServerOperationsExperience} from './ServerOperationsExperience'
+import {ServerWorkspaceExperience} from './ServerWorkspaceExperience'
 
 type Props={
  path:string;auth:AuthState;signIn:()=>Promise<void>;logout:()=>void;
@@ -152,11 +153,12 @@ function RegistryData({auth,path,navigate}:{auth:AuthState;path:string;navigate:
    {rows.map(a=><tr key={a.id}><td><button className="link-button" onClick={()=>navigate(assetRoute(a.id))}>{a.name} <ArrowRight size={14}/></button><small>{a.assetNumber}</small></td><td>{a.category}</td><td>{val(a)}</td><td>{a.lifecycle}</td><td>v{a.recordVersion}</td></tr>)}
   </tbody></table></div>}
   {nextCursor&&!error&&<button type="button" className="secondary-button" disabled={loading} onClick={()=>void load(nextCursor)}>{loading?'Loading…':'Load next page'}</button>}
-  <p><button className="secondary-button" onClick={()=>navigate(root+'/lifecycle')}>Tenant acquisition &amp; disposition history <ArrowRight size={16}/></button> <button className="secondary-button" onClick={()=>navigate(root+'/economics')}>Secure Economics <ArrowRight size={16}/></button> <button className="secondary-button" onClick={()=>navigate(root+'/operations')}>Secure Operations <ArrowRight size={16}/></button></p><p className="server-note">This listing is exclusively from the protected API. The local Dashboard, Acquisition, Finance and other Phase 1–6 modules remain browser previews until their server APIs exist.</p>
+  <p><button className="secondary-button" onClick={()=>navigate(root+'/lifecycle')}>Tenant acquisition &amp; disposition history <ArrowRight size={16}/></button> <button className="secondary-button" onClick={()=>navigate(root+'/economics')}>Secure Economics <ArrowRight size={16}/></button> <button className="secondary-button" onClick={()=>navigate(root+'/operations')}>Secure Operations <ArrowRight size={16}/></button> <button className="primary-button" onClick={()=>navigate(root+'/workspace')}>Connected Workspace <ArrowRight size={16}/></button></p><p className="server-note">This listing is exclusively from the protected API. The local Dashboard, Acquisition, Finance and other Phase 1–6 modules remain browser previews until their server APIs exist.</p>
  </section>
 }
 export function ServerRegistryExperience({path,auth,signIn,logout,selectMembership,navigate}:Props){
  const [tenantDraft,setTenantDraft]=useState(auth.tenantId)
+ useEffect(()=>setTenantDraft(auth.tenantId),[auth.tenantId])
  const [error,setError]=useState('')
  const [verifying,setVerifying]=useState(false)
  async function submitTenant(e:FormEvent){
@@ -181,6 +183,8 @@ export function ServerRegistryExperience({path,auth,signIn,logout,selectMembersh
    <ServerEconomicsExperience key={auth.tenantId+'|'+path} auth={auth} path={path} navigate={navigate}/>:
    (path==='server-registry/operations'||/^server-registry\/asset\/[0-9a-f-]{36}\/operations$/i.test(path))?
    <ServerOperationsExperience key={auth.tenantId+'|'+path} auth={auth} path={path} navigate={navigate}/>:
+   path==='server-registry/workspace'?
+   <ServerWorkspaceExperience key={auth.tenantId+'|'+path} auth={auth} navigate={navigate}/>:
    <RegistryData key={auth.tenantId+'|'+path} path={path} auth={auth} navigate={navigate}/>}
 </>}
  </div>

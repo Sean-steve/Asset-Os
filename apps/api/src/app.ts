@@ -65,7 +65,7 @@ export function buildApp(pool:PoolPort,verifier:OidcVerifier|null=null){
  app.get('/v1/meta',async()=>({
   apiVersion:API_VERSION,contractVersion:CONTRACT_VERSION,phase:'B4',
   runtimeDomainAccess:verifier?'OIDC_CONFIGURED_MEMBERSHIP_REQUIRED':'IDENTITY_NOT_CONFIGURED',
-  frontendConnection:'NOT_CONNECTED',capabilities:B4_CAPABILITIES
+  frontendConnection:verifier?'AUTHENTICATED_B1_B4_UI_AVAILABLE':'IDENTITY_NOT_CONFIGURED',capabilities:B4_CAPABILITIES
  }))
  app.get('/v1/openapi.json',async()=>openapi)
 

@@ -1,6 +1,21 @@
 # Asset OS — Personal Kernel Asset Intelligence
 
-**Frontend: Phase 7 certified — 60/60 browser preview experiences, plus B3.1 Secure Economics and B4.1 Secure Operations API-backed screens. Backend: B4 PostgreSQL operational authority in place (live identity, HTTPS API and dedicated staging deployment still unconfigured).** The hosted Pages frontend remains a browser-local preview outside the separate Secure Registry. Five starter assets are clearly illustrative; user-entered asset, ownership, finance, operation and portfolio changes persist in local browser storage only. Dashboard valuation history and operational alerts now derive only from recorded data, with honest empty states rather than synthetic activity.
+**Frontend: 60/60 browser preview experiences plus authenticated B1–B4 Connected Workspace. Backend: B4 PostgreSQL APIs, Ubuntu local setup and loopback-only OIDC development login implemented; production HTTPS identity and deployed staging still unconfigured.** The hosted Pages frontend remains a browser-local preview outside the separate Secure Registry. Five starter assets are clearly illustrative; user-entered asset, ownership, finance, operation and portfolio changes persist in local browser storage only. Dashboard valuation history and operational alerts now derive only from recorded data, with honest empty states rather than synthetic activity.
+
+## B4.2–B4.4 — Local PostgreSQL, signed OIDC login and connected B1–B4 workspace
+
+The backend now includes **no-Supabase, no-Docker Ubuntu PostgreSQL setup**, an explicitly **loopback-only** RS256 OIDC development identity provider (Authorization Code + PKCE S256), automated first-owner enrollment, and a Connected Workspace for authenticated registry/lifecycle/economics/operations flows. Existing B5–B6 preview screens are not yet backed by APIs.
+
+From your Ubuntu clone with PostgreSQL 16 running on port 5432 and Node.js 22+:
+
+```bash
+npm run local:setup
+npm run local:dev
+```
+
+Open **http://127.0.0.1:5173/Asset-Os/#/server-registry**. Local account: `owner`; view its randomly generated password with `grep '^LOCAL_IDP_PASSWORD=' .local/asset-os.env`. After sign-in, verify the preselected tenant and open **Connected Workspace** to exercise real PostgreSQL records. No accounts, passwords or access tokens are shipped in source or in GitHub Pages. Stop with Ctrl+C; DB data remains intact.
+
+A dedicated real PostgreSQL + local OIDC + Chromium integration workflow validates this path in GitHub CI. **Running the script on your laptop remains necessary to establish your machine's setup.** Production still requires a trusted external HTTPS OIDC provider. Details: [B4.2–B4.4 Local Backend Guide](docs/LOCAL_BACKEND_B4_2_B4_4.md).
 
 ## Phase B4.1 — Secure Operations Frontend–Backend Integration
 
