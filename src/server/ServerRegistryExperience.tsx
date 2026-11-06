@@ -157,6 +157,7 @@ function RegistryData({auth,path,navigate}:{auth:AuthState;path:string;navigate:
 }
 export function ServerRegistryExperience({path,auth,signIn,logout,selectMembership,navigate}:Props){
  const [tenantDraft,setTenantDraft]=useState(auth.tenantId)
+ useEffect(()=>setTenantDraft(auth.tenantId),[auth.tenantId])
  const [error,setError]=useState('')
  const [verifying,setVerifying]=useState(false)
  async function submitTenant(e:FormEvent){
