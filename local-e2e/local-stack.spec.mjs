@@ -13,6 +13,8 @@ test('B4.2-B4.4 real local OIDC + PostgreSQL authenticated asset lifecycle, oper
  await page.getByRole('textbox',{name:'Username'}).fill('owner')
  await page.getByLabel('Password').fill(password)
  await page.getByRole('button',{name:'Sign in securely'}).click()
+ await page.waitForTimeout(1300)
+ console.log('LOCAL_OIDC_AUTH_DIAGNOSTIC',JSON.stringify({url:page.url(),visibleText:(await page.locator('body').innerText()).slice(0,500)}))
  await expect(page.getByRole('textbox',{name:'Tenant UUID'})).toHaveValue(tenant)
  await page.getByRole('button',{name:'Verify membership'}).click()
  await expect(page.getByText('Verified tenant').first()).toBeVisible()
