@@ -15,7 +15,8 @@
     "migrate:check": "npm run build && node dist/migrate.js --check",
     "test": "npm run build && node --test test/*.unit.test.mjs",
     "test:db": "npm run build && node --test test/*.db.test.mjs",
-    "bootstrap": "npm run build && node dist/bootstrap.js"
+    "bootstrap": "npm run build && node dist/bootstrap.js",
+    "dev:idp": "tsx watch src/local-idp.ts"
   },
   "dependencies": {
     "fastify": "5.6.1",
