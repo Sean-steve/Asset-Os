@@ -56,8 +56,9 @@ BEGIN
 END $$;
 GRANT CONNECT ON DATABASE asset_os TO asset_os_app;
 SQL
+npm install --no-audit --no-fund
 npm --prefix apps/api install --no-audit --no-fund
 npm --prefix apps/api run build
 node --env-file="$CONFIG" apps/api/dist/migrate.js
 node --env-file="$CONFIG" apps/api/dist/migrate.js --check
-echo "Local DB ready. Next: npm install && npm run local:dev"
+echo "Local DB ready. Next: npm run local:dev"
