@@ -42,7 +42,7 @@ test('local OIDC PKCE login signs issuer-pinned RS256 access tokens; code burns 
   const ticket=get.body.match(/name="ticket" type="hidden" value="([^"]+)"/)?.[1]
   assert.ok(ticket)
   const login=await app.inject({method:'POST',url:'/authorize',
-   headers:{'content-type':form},payload:body({ticket,username:'owner',password:devEnv.LOCAL_IDP_PASSWORD})})
+   headers:{'content-type':form,origin:'http://127.0.0.1:3003'},payload:body({ticket,username:'owner',password:devEnv.LOCAL_IDP_PASSWORD})})
   assert.equal(login.statusCode,303)
   const redirect=new URL(login.headers.location)
   assert.equal(redirect.origin,'http://127.0.0.1:5173')
