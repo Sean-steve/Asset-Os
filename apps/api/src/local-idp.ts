@@ -25,7 +25,7 @@ export async function createLocalIdp(env:NodeJS.ProcessEnv=process.env){
   reply.header('Cache-Control','no-store').header('X-Content-Type-Options','nosniff')
    .header('Referrer-Policy','no-referrer').header('X-Frame-Options','DENY')
   const origin=req.headers.origin
-  if(origin){
+  if(origin&&origin!==issuer){
    if(!origins.has(origin))return reply.code(403).send({error:'origin_not_allowed'})
    reply.header('Access-Control-Allow-Origin',origin).header('Vary','Origin')
   }
