@@ -2,7 +2,7 @@ import {useCallback,useEffect,useState} from 'react'
 
 export type RuntimeConfig={
  apiBaseUrl:string;issuer:string;authorizationEndpoint:string;tokenEndpoint:string;
- clientId:string;audience:string
+ clientId:string;audience:string;localDefaultTenantId?:string
 }
 export type ServerAsset={
  id:string;tenantId:string;assetNumber:string;name:string;description:string;
@@ -41,6 +41,12 @@ export function validateRuntimeConfig(value:unknown,siteOrigin:string):RuntimeCo
   throw Error('Authorization and token endpoints must share the exact issuer origin.')
  if(c.clientId.length>150||c.audience.length>200)throw Error('Invalid OIDC public client settings.')
  if(!c.clientId||!c.audience)throw Error('OIDC client and audience are required.')
+ if(v.localDefaultTenantId!==undefined){
+  if(!devSite||typeof v.localDefaultTenantId!=='string'||
+   !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(v.localDefaultTenantId))
+   throw Error('Local tenant hint is only permitted for loopback development and must be a UUID.')
+  c.localDefaultTenantId=v.localDefaultTenantId
+ }
  return c
 }
 export async function loadRuntimeConfig(fetcher:typeof fetch=fetch):Promise<RuntimeConfig|null>{
@@ -145,7 +151,7 @@ export function useServerIdentity(){
     if(cancelled)return
     setState({...empty,phase:'tokenReady',config,token:body.access_token,
       expiresAt:Date.now()+body.expires_in*1000,
-      tenantId:sessionStorage.getItem(STORE_TENANT)||''})
+      tenantId:sessionStorage.getItem(STORE_TENANT)||config.localDefaultTenantId||''})
    }catch{
     if(!cancelled)setState({...empty,phase:'error',config,error:'Secure sign-in could not be completed. Restart authentication.'})
    }
