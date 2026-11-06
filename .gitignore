@@ -14,3 +14,6 @@ apps/api/coverage/
 infra/.env
 infra/.env.*
 !infra/.env.example
+
+# Local PostgreSQL, OIDC and tenant bootstrap files
+.local/
