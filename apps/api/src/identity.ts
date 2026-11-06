@@ -18,8 +18,9 @@ export function oidcConfiguration(env:NodeJS.ProcessEnv=process.env){
  if(!issuer||!audience||!jwks)throw new Error('OIDC_ISSUER, OIDC_AUDIENCE and OIDC_JWKS_URL must all be configured together.')
  let issuerUrl:URL,jwksUrl:URL
  try{issuerUrl=new URL(issuer);jwksUrl=new URL(jwks)}catch{throw new Error('OIDC issuer/JWKS must be valid absolute URLs.')}
- const allowLoopback=env.NODE_ENV==='test'&&env.OIDC_ALLOW_TEST_LOOPBACK==='true'
-   &&issuerUrl.hostname==='127.0.0.1'&&jwksUrl.hostname==='127.0.0.1'
+ const allowLoopback=((env.NODE_ENV==='test'&&env.OIDC_ALLOW_TEST_LOOPBACK==='true')||
+   (env.NODE_ENV==='development'&&env.ASSET_OS_ALLOW_LOCAL_OIDC==='yes'))&&
+   issuerUrl.hostname==='127.0.0.1'&&jwksUrl.hostname==='127.0.0.1'
  const secure=issuerUrl.protocol==='https:'&&jwksUrl.protocol==='https:'
  if(!secure&&!allowLoopback)throw new Error('OIDC issuer and JWKS require HTTPS (test-only loopback exception).')
  if(issuerUrl.origin!==jwksUrl.origin)throw new Error('OIDC JWKS must share the pinned issuer origin.')
