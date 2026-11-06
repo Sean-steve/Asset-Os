@@ -28,6 +28,7 @@ type Palette = 'blue' | 'green' | 'violet' | 'orange' | 'red'
 
 const nav: Array<{name: string; icon: LucideIcon; slug: string; phase: number}> = [
   { name:'Dashboard',icon:LayoutDashboard,slug:'dashboard',phase:1 },
+  { name:'Connected Workspace',icon:ShieldCheck,slug:'server-registry/workspace',phase:1 },
   { name:'Secure Registry',icon:LockKeyhole,slug:'server-registry',phase:1 },
   { name:'Secure Lifecycle',icon:ShieldCheck,slug:'server-registry/lifecycle',phase:2 },
   { name:'Secure Economics',icon:Landmark,slug:'server-registry/economics',phase:3 },
@@ -93,6 +94,7 @@ const currentPath = () => decodeURIComponent(window.location.hash.replace(/^#\/?
 const getPage = (path: string): Page =>
   path === 'dashboard' ? 'dashboard' : /^server-registry(?:\/|$)/.test(path) ? 'server' : path === 'design' ? 'design' : path === 'roadmap' ? 'roadmap' : /^(assets(?:\/new)?|asset\/|classifications$|tags$|search$|activity$|type-views$)/.test(path) ? 'registry' : /^(acquisitions(?:\/|$)|cost-basis(?:\/|$)|lifecycle(?:\?|$)|ownership(?:\/|$)|dispose(?:\/|$)|dispositions(?:\/|$))/.test(path) ? 'lifecycle' : /^(valuations(?:\/|$)|valuation-history(?:\?|$)|financing(?:\/|$)|income-expenses$|cash-flow(?:\?|$)|economics(?:\?|$)|reconciliation$)/.test(path) ? 'economics' : /^(maintenance(?:\/|$)|insurance(?:\/|$)|utilization(?:\/|$)|evidence$|locations$|operations-calendar$)/.test(path) ? 'operations' : /^(portfolios$|portfolio\/|allocation(?:\?|$)|comparison$|performance(?:\?|$)|risk-center$|risk\/|underperforming$|scenarios(?:\?|$)|intelligence$)/.test(path) ? 'intelligence' : /^(wealth-interface$|kernel-actions$|notifications$|reports$|integrations(?:\/|$)|team-access$|security-audit$|settings$|onboarding$)/.test(path) ? 'governance' : 'planned'
 const secureNavActive = (slug:string,path:string) =>
+  slug==='server-registry/workspace' ? path==='server-registry/workspace' :
   slug==='server-registry'
     ? path==='server-registry'||path==='server-registry/new'||/^server-registry\/asset\/[0-9a-f-]{36}(?:\/edit)?$/i.test(path)
     : slug==='server-registry/lifecycle'
