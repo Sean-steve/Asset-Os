@@ -96,7 +96,8 @@ export async function createLocalIdp(env:NodeJS.ProcessEnv=process.env){
  })
  // CLI-only enrollment. This admin secret is never sent to browser code.
  app.post('/dev/owner-token',async(req,reply)=>{
-  if(!eq(req.headers['x-local-admin-secret']||'',admin))
+  if(typeof req.headers['x-local-admin-secret']!=='string'||
+   !eq(req.headers['x-local-admin-secret'],admin))
    return reply.code(403).send({error:'forbidden'})
   return {access_token:await issue(),expires_in:1200}
  })
