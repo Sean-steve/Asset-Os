@@ -25,10 +25,14 @@ export async function createLocalIdp(env:NodeJS.ProcessEnv=process.env){
   reply.header('Cache-Control','no-store').header('X-Content-Type-Options','nosniff')
    .header('Referrer-Policy','no-referrer').header('X-Frame-Options','DENY')
   const origin=req.headers.origin
-  if(origin&&origin!==issuer){
-   if(!origins.has(origin))return reply.code(403).send({error:'origin_not_allowed'})
+  // CORS protects programmatic token requests, not navigation to an HTML
+  // authorization page. The latter uses independent PKCE and one-use tickets.
+  if(origin&&req.url==='/token'&&!origins.has(origin))
+   return reply.code(403).send({error:'origin_not_allowed'})
+  if(origin&&req.url==='/dev/owner-token')
+   return reply.code(403).send({error:'admin_endpoint_not_for_browser'})
+  if(origin&&origins.has(origin))
    reply.header('Access-Control-Allow-Origin',origin).header('Vary','Origin')
-  }
   if(req.method==='OPTIONS'&&req.url==='/token'){
    reply.header('Access-Control-Allow-Methods','POST, OPTIONS')
     .header('Access-Control-Allow-Headers','content-type')
